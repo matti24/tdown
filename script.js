@@ -1,38 +1,35 @@
-let countdownElement = document.getElementById('countdown');
-let daysElement = document.getElementById('days');
-let hoursElement = document.getElementById('hours');
-let minutesElement = document.getElementById('minutes');
-let secondsElement = document.getElementById('seconds');
+const countdowns = {
+  countdown1: { targetDate: new Date("2025-01-01T00:00:00Z"), timeZone: "Europe/London" },
+  countdown2: { targetDate: new Date("2026-01-01T00:00:00Z"), timeZone: "Europe/London" },
+  countdown3: { targetDate: new Date("2027-06-01T00:00:00Z"), timeZone: "Europe/London" }
+};
 
-let currentTimeZone = 'Europe/London';
-let targetDate = new Date('2025-01-01T00:00:00Z');
-
-function updateCountdown() {
-  let now = new Date().toLocaleString("en-US", { timeZone: currentTimeZone });
-  let nowDate = new Date(now);
-
-  let timeRemaining = targetDate - nowDate;
+function updateCountdown(id) {
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: countdowns[id].timeZone }));
+  const target = countdowns[id].targetDate;
+  const timeRemaining = target - now;
 
   if (timeRemaining <= 0) {
-    countdownElement.innerHTML = "It's 2025!";
+    document.getElementById(id).innerText = "🎉 Es ist soweit!";
     return;
   }
 
-  let days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
-  let hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  let minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-  let seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-
-  daysElement.textContent = days;
-  hoursElement.textContent = hours;
-  minutesElement.textContent = minutes;
-  secondsElement.textContent = seconds;
+  document.getElementById(`days${id.slice(-1)}`).textContent = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+  document.getElementById(`hours${id.slice(-1)}`).textContent = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  document.getElementById(`minutes${id.slice(-1)}`).textContent = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+  document.getElementById(`seconds${id.slice(-1)}`).textContent = Math.floor((timeRemaining % (1000 * 60)) / 1000);
 }
 
-function setTimeZone(timeZone) {
-  currentTimeZone = timeZone;
-  updateCountdown();
+function setTimeZone(id, zone) {
+  countdowns[id].timeZone = zone;
+  updateCountdown(id);
 }
 
-setInterval(updateCountdown, 1000);
-updateCountdown();
+function startCountdowns() {
+  for (const id in countdowns) {
+    setInterval(() => updateCountdown(id), 1000);
+    updateCountdown(id);
+  }
+}
+
+startCountdowns();
