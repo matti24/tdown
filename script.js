@@ -1,6 +1,10 @@
 let countdownElement = document.getElementById('countdown');
-let currentTimeZone = 'Europe/London';
+let daysElement = document.getElementById('days');
+let hoursElement = document.getElementById('hours');
+let minutesElement = document.getElementById('minutes');
+let secondsElement = document.getElementById('seconds');
 
+let currentTimeZone = 'Europe/London';
 let targetDate = new Date('2025-01-01T00:00:00Z');
 
 function updateCountdown() {
@@ -19,17 +23,10 @@ function updateCountdown() {
   let minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
   let seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
 
-  let dayLabel = days === 1 ? "Day" : "Days";
-  let hourLabel = hours === 1 ? "Hour" : "Hours";
-  let minuteLabel = minutes === 1 ? "Minute" : "Minutes";
-  let secondLabel = seconds === 1 ? "Second" : "Seconds";
-
-  countdownElement.innerHTML = `
-    ${days} ${dayLabel} 
-    ${hours} ${hourLabel} 
-    ${minutes} ${minuteLabel} 
-    ${seconds} ${secondLabel}
-  `;
+  daysElement.textContent = days;
+  hoursElement.textContent = hours;
+  minutesElement.textContent = minutes;
+  secondsElement.textContent = seconds;
 }
 
 function setTimeZone(timeZone) {
