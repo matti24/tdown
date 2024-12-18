@@ -1,0 +1,165 @@
+@font-face {
+  font-family: "Titan One";
+  src: url("fonts/TitanOne-Regular.woff2") format("woff2"),
+       url("fonts/TitanOne-Regular.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+
+body {
+  font-family: "Titan One", serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  background-color: #000000;
+  color: rgb(186, 180, 191);
+  text-align: center;
+  letter-spacing: 0.7px;
+}
+
+.container {
+  background-color: #333;
+  padding: 30px;
+  border-radius: 20px;
+}
+
+h1 {
+  margin-bottom: 20px;body {
+    font-family: "Titan One", serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #282c34;
+    color: white;
+    text-align: center;
+    overflow: hidden;
+  }
+  
+  .container {
+    background-color: #333;
+    padding: 20px;
+    border-radius: 8px;
+    position: relative;
+    font-family: "Titan One", serif;
+  }
+  
+  h1 {
+    margin-bottom: 20px;
+  }
+  
+  #countdown {
+    font-size: 40px;
+    margin-bottom: 20px;
+    font-family: "Titan One", serif;
+  }
+  
+  .timezone-buttons button {
+    background-color: #000000;
+    border: none;
+    padding: 10px;
+    margin: 5px;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+  
+  .timezone-buttons button:hover {
+    background-color: #b9cdda;
+  }
+  
+  .timezone-buttons button:focus {
+    outline: none;
+  }
+  
+  .confetti {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    background-size: cover;
+    opacity: 0.5;
+  }
+  
+  .container::before, .container::after {
+    content: "🎉";
+    font-size: 50px;
+    position: absolute;
+  }
+  
+  .container::before {
+    top: 10px;
+    left: 10px;
+  }
+  
+  .container::after {
+    bottom: 10px;
+    right: 10px;
+  }
+}
+
+#countdown {
+  font-size: 40px;
+  margin-bottom: 20px;
+}
+
+.timezone-buttons button {
+  background-color: #dadada;
+  border: none;
+  padding: 10px;
+  margin: 5px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.timezone-buttons button:hover {
+  background-color: #a9b3b9;
+}
+
+.timezone-buttons button:focus {
+  outline: none;
+}
+
+.titan-one-regular {
+  font-family: "Titan One", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+  h1 {
+    font-size: 24px;
+  }
+  #countdown {
+    font-size: 30px;
+  }
+  .timezone-buttons button {
+    padding: 8px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 10px;
+  }
+  h1 {
+    font-size: 20px;
+  }
+  #countdown {
+    font-size: 24px;
+  }
+  .timezone-buttons button {
+    padding: 6px;
+    font-size: 12px;
+  }
+}
+
+
