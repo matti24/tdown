@@ -1,7 +1,6 @@
 const countdowns = {
-  countdown1: { targetDate: new Date("2025-01-01T00:00:00Z"), timeZone: "Europe/London" },
-  countdown2: { targetDate: new Date("2026-01-01T00:00:00Z"), timeZone: "Europe/London" },
-  countdown3: { targetDate: new Date("2027-06-01T00:00:00Z"), timeZone: "Europe/London" }
+  countdown2: { targetDate: new Date("2025-12-31T23:00:00Z"), timeZone: "Europe/London" },
+  countdown3: { targetDate: new Date("2026-12-31T23:00:00Z"), timeZone: "Europe/London" }
 };
 
 function updateCountdown(id) {
@@ -10,7 +9,7 @@ function updateCountdown(id) {
   const timeRemaining = target - now;
 
   if (timeRemaining <= 0) {
-    document.getElementById(id).innerText = "🎉 Es ist soweit!";
+    document.getElementById(id).innerText = "You have reached this year!";
     return;
   }
 
