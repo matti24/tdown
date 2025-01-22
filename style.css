@@ -439,7 +439,7 @@ body {
 body {
   margin: 0;
   height: 100vh;
-  overflow: hidden;
+  overflow-y: auto; /* scrowling */
   background-color: #000;
   position: relative;
 }
