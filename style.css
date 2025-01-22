@@ -439,9 +439,11 @@ body {
 body {
   margin: 0;
   height: 100vh;
-  overflow-y: auto; /* scrowling */
   background-color: #000;
   position: relative;
+  overflow-y: auto; 
+  padding: 0px; 
+  scroll-behavior: smooth; 
 }
 
 .emoji-container {
@@ -471,4 +473,13 @@ body {
   }
 }
 
-
+.container {
+  background-color: #333;
+  padding: 20px; 
+  border-radius: 15px;
+  margin: 20px auto; 
+  width: 85%; 
+  max-width: 600px; 
+  box-shadow: 0 4px 8px rgba(25, 25, 25, 0.7); 
+  text-align: center;
+}
