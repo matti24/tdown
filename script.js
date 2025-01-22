@@ -35,7 +35,7 @@ function startCountdowns() {
 startCountdowns();
 
 const emojiContainer = document.getElementById('emojiContainer');
-const clockEmojis = ['🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛'];
+const clockEmojis = ['🕐', '🕑', '🕒', '🕓', '🕔', '🕕', '🕖', '🕗', '🕘', '🕙', '🕚', '🕛','2026','2027'];
 
 function createEmoji() {
   const emojiElement = document.createElement('div');
@@ -53,7 +53,7 @@ function createEmoji() {
   emojiElement.style.top = `${startY}vh`;
 
   // Random animation duration
-  const duration = Math.random() *  + 3; // Between 0s and 3s
+  const duration = Math.random() *  + 0.2; // Between 0s and 3s
   emojiElement.style.animationDuration = `${duration}s`;
 
   emojiContainer.appendChild(emojiElement);
@@ -63,4 +63,4 @@ function createEmoji() {
 }
 
 // Generate emojis at intervals
-setInterval(createEmoji, 20);
+setInterval(createEmoji, 0);
