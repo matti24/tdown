@@ -1,49 +1,12 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Countdown Events</title>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Titan+One&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/particles.js"></script>
-</head>
-<body>
-  <div class="emoji-container" id="emojiContainer"></div>
-  <div class="container">
-    <h1>Countdown until 2026</h1>
-    <div id="countdown2" class="countdown-box">
-      <div class="time-segment"><span id="days2">0</span><span class="label">Days</span></div>
-      <div class="time-segment"><span id="hours2">0</span><span class="label">Hours</span></div>
-      <div class="time-segment"><span id="minutes2">0</span><span class="label">Minutes</span></div>
-      <div class="time-segment"><span id="seconds2">0</span><span class="label">Seconds</span></div>
-    </div>
-    <div class="timezone-buttons">
-      <button onclick="setTimeZone('countdown2', 'Europe/London')">London</button>
-      <button onclick="setTimeZone('countdown2', 'America/New_York')">New York</button>
-      <button onclick="setTimeZone('countdown2', 'Asia/Tokyo')">Tokyo</button>
-      <button onclick="setTimeZone('countdown2', 'Europe/Berlin')">Berlin</button>
-      <button onclick="setTimeZone('countdown2', 'Australia/Sydney')">Sydney</button>
-    </div>
-  </div>
-
-  <div class="container">
-    <h1>Countdown until 2027</h1>
-    <div id="countdown3" class="countdown-box">
-      <div class="time-segment"><span id="days3">0</span><span class="label">Days</span></div>
-      <div class="time-segment"><span id="hours3">0</span><span class="label">Hours</span></div>
-      <div class="time-segment"><span id="minutes3">0</span><span class="label">Minutes</span></div>
-      <div class="time-segment"><span id="seconds3">0</span><span class="label">Seconds</span></div>
-    </div>
-    <div class="timezone-buttons">
-      <button onclick="setTimeZone('countdown3', 'Europe/London')">London</button>
-      <button onclick="setTimeZone('countdown3', 'America/New_York')">New York</button>
-      <button onclick="setTimeZone('countdown3', 'Asia/Tokyo')">Tokyo</button>
-      <button onclick="setTimeZone('countdown3', 'Europe/Berlin')">Berlin</button>
-      <button onclick="setTimeZone('countdown3', 'Australia/Sydney')">Sydney</button>
-    </div>
-  </div>
-
-  <script src="script.js"></script>
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tdown — 3D Globe</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

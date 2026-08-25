@@ -25,6 +25,9 @@ function setTimeZone(id, zone) {
   updateCountdown(id);
 }
 
+// Fuer die onclick-Handler im HTML global verfuegbar machen
+window.setTimeZone = setTimeZone;
+
 function startCountdowns() {
   for (const id in countdowns) {
     setInterval(() => updateCountdown(id), 1000);
