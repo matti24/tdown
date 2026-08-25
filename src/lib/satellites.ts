@@ -125,28 +125,37 @@ function parseTle(text: string, constellation: string): SatelliteRecord[] {
   return records;
 }
 
+/**
+ * Fetch TLE text through a localStorage cache. Skips the network while the
+ * cache is fresh (Celestrak updates a few times/day) to avoid the "not updated"
+ * 403, and falls back to the last good copy on any failure.
+ */
+async function cachedTleFetch(
+  key: string,
+  url: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const cached = readTleCache(key);
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.text;
+  try {
+    const res = await fetch(url, { signal });
+    if (!res.ok) throw new Error(`Celestrak ${key} ${res.status}`);
+    const text = await res.text();
+    writeTleCache(key, text);
+    return text;
+  } catch (err) {
+    if (cached) return cached.text;
+    throw err;
+  }
+}
+
 /** Fetch and parse a single constellation's current element sets. */
 export async function fetchConstellation(
   constellation: Constellation,
   signal?: AbortSignal,
 ): Promise<SatelliteRecord[]> {
-  const cached = readTleCache(constellation.key);
-  // Skip the network while the cached set is still fresh (Celestrak updates a
-  // few times per day) to avoid the "not updated" 403 and speed up load.
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-    return parseTle(cached.text, constellation.key);
-  }
-  try {
-    const res = await fetch(constellation.url, { signal });
-    if (!res.ok) throw new Error(`Celestrak ${constellation.key} ${res.status}`);
-    const text = await res.text();
-    writeTleCache(constellation.key, text);
-    return parseTle(text, constellation.key);
-  } catch (err) {
-    // Network failure or Celestrak 403: fall back to the last good data.
-    if (cached) return parseTle(cached.text, constellation.key);
-    throw err;
-  }
+  const text = await cachedTleFetch(constellation.key, constellation.url, signal);
+  return parseTle(text, constellation.key);
 }
 
 /** Fetch every tracked constellation; a failed group degrades gracefully. */
