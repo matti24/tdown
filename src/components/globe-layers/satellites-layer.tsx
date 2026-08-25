@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import { gstime } from "satellite.js";
 import * as THREE from "three";
 import { usePolling } from "@/hooks/use-live-data";
@@ -18,6 +19,11 @@ const TLE_REFRESH_MS = 6 * 60 * 60 * 1000;
 /** Caps keep propagation smooth; mobile gets a lighter swarm. */
 const MAX_DESKTOP = 8000;
 const MAX_MOBILE = 2500;
+/** Ray proximity (world units) for picking a satellite on hover. */
+const HOVER_THRESHOLD = 0.035;
+
+/** Constellation metadata keyed for quick hover lookups. */
+const META_BY_KEY = new Map(CONSTELLATIONS.map((c) => [c.key, c]));
 
 export interface ConstellationCount {
   key: string;
@@ -36,6 +42,15 @@ interface SatellitesLayerProps {
   onStats?: (stats: SatelliteStats | null) => void;
 }
 
+interface HoveredSatellite {
+  name: string;
+  purpose: string;
+  color: string;
+  speedKmh: number;
+  altKm: number;
+  position: THREE.Vector3;
+}
+
 /** Compress real altitude into a radius factor so LEO/MEO shells stay visible. */
 function altitudeFactor(altKm: number): number {
   return 1.08 + Math.min(altKm / EARTH_RADIUS_KM, 3.5) * 0.14;
@@ -52,6 +67,8 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
   const accumulator = useRef(UPDATE_INTERVAL);
   const onStatsRef = useRef(onStats);
   onStatsRef.current = onStats;
+  const raycaster = useThree((s) => s.raycaster);
+  const [hovered, setHovered] = useState<HoveredSatellite | null>(null);
 
   const maxSats = useMemo(
     () =>
@@ -105,6 +122,24 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
     if (working.length === 0) onStatsRef.current?.(null);
   }, [working]);
 
+  // The default Points pick radius (1 unit) is far too wide for our globe.
+  useEffect(() => {
+    const points = raycaster.params.Points ?? { threshold: 0 };
+    raycaster.params.Points = points;
+    const previous = points.threshold;
+    points.threshold = HOVER_THRESHOLD;
+    return () => {
+      points.threshold = previous;
+    };
+  }, [raycaster]);
+
+  useEffect(() => {
+    document.body.style.cursor = hovered ? "pointer" : "";
+    return () => {
+      document.body.style.cursor = "";
+    };
+  }, [hovered]);
+
   useFrame((_, delta) => {
     if (working.length === 0) return;
     accumulator.current += delta;
@@ -144,16 +179,72 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
 
   if (working.length === 0) return null;
 
+  const showTooltip = (event: ThreeEvent<PointerEvent>) => {
+    const index = event.index;
+    if (index == null) return;
+    event.stopPropagation();
+    const record = working[index];
+    if (!record) return;
+    const now = new Date();
+    const state = propagateSatellite(record.satrec, now, gstime(now));
+    if (!state) return;
+    const meta = META_BY_KEY.get(record.constellation);
+    const array = geometry.getAttribute("position").array as Float32Array;
+    setHovered({
+      name: record.name,
+      purpose: meta?.purpose ?? "",
+      color: meta?.color ?? "#ffffff",
+      speedKmh: state.speedKmh,
+      altKm: state.altKm,
+      position: new THREE.Vector3(
+        array[index * 3],
+        array[index * 3 + 1],
+        array[index * 3 + 2],
+      ),
+    });
+  };
+
+  const hideTooltip = () => setHovered(null);
+
   return (
-    <points geometry={geometry} frustumCulled={false}>
-      <pointsMaterial
-        size={0.02}
-        vertexColors
-        sizeAttenuation
-        transparent
-        opacity={0.9}
-        depthWrite={false}
-      />
-    </points>
+    <group>
+      <points
+        geometry={geometry}
+        frustumCulled={false}
+        onPointerMove={showTooltip}
+        onPointerOut={hideTooltip}
+      >
+        <pointsMaterial
+          size={0.02}
+          vertexColors
+          sizeAttenuation
+          transparent
+          opacity={0.9}
+          depthWrite={false}
+        />
+      </points>
+
+      {hovered && (
+        <Html position={hovered.position} center style={{ pointerEvents: "none" }}>
+          <div
+            className="w-max -translate-y-8 rounded-lg border bg-neutral-900/90 px-2.5 py-1.5 text-xs shadow-xl backdrop-blur"
+            style={{ borderColor: `${hovered.color}66` }}
+          >
+            <div className="flex items-center gap-1.5 font-semibold text-white">
+              <span
+                className="inline-block h-2 w-2 rounded-full"
+                style={{ backgroundColor: hovered.color }}
+              />
+              {hovered.name}
+            </div>
+            <div className="mt-0.5 text-neutral-300">{hovered.purpose}</div>
+            <div className="text-neutral-400">
+              {Math.round(hovered.speedKmh).toLocaleString("en-US")} km/h ·{" "}
+              {Math.round(hovered.altKm).toLocaleString("en-US")} km alt
+            </div>
+          </div>
+        </Html>
+      )}
+    </group>
   );
 }

@@ -14,6 +14,8 @@ import {
 export interface Constellation {
   key: string;
   label: string;
+  /** What the constellation is for (shown on hover). */
+  purpose: string;
   /** Full Celestrak URL delivering three-line (name + TLE) element sets. */
   url: string;
   /** Marker colour (hex). */
@@ -29,9 +31,27 @@ const gpGroup = (group: string) =>
 
 /** Tracked constellations: internet mega-constellations plus navigation sats. */
 export const CONSTELLATIONS: Constellation[] = [
-  { key: "starlink", label: "Starlink", url: STARLINK_URL, color: "#3fa9ff" },
-  { key: "oneweb", label: "OneWeb", url: gpGroup("oneweb"), color: "#b57bff" },
-  { key: "gps", label: "GPS", url: gpGroup("gps-ops"), color: "#ffcf4d" },
+  {
+    key: "starlink",
+    label: "Starlink",
+    purpose: "Internet · SpaceX",
+    url: STARLINK_URL,
+    color: "#3fa9ff",
+  },
+  {
+    key: "oneweb",
+    label: "OneWeb",
+    purpose: "Internet",
+    url: gpGroup("oneweb"),
+    color: "#b57bff",
+  },
+  {
+    key: "gps",
+    label: "GPS",
+    purpose: "Navigation · USA",
+    url: gpGroup("gps-ops"),
+    color: "#ffcf4d",
+  },
 ];
 
 export interface SatelliteRecord {
