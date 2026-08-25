@@ -1,14 +1,8 @@
 import { cn } from "@/lib/utils";
-import { magnitudeColor } from "./globe-layers/earthquake-layer";
 
 export interface LayerState {
-  earthquakes: boolean;
   iss: boolean;
   satellites: boolean;
-  aurora: boolean;
-  sun: boolean;
-  events: boolean;
-  weather: boolean;
 }
 
 interface LayerMeta {
@@ -19,12 +13,6 @@ interface LayerMeta {
 }
 
 const LAYER_META: LayerMeta[] = [
-  {
-    key: "earthquakes",
-    label: "Earthquakes",
-    icon: "🌍",
-    desc: "USGS · last 24 h",
-  },
   { key: "iss", label: "ISS", icon: "🛰️", desc: "Live position" },
   {
     key: "satellites",
@@ -32,10 +20,6 @@ const LAYER_META: LayerMeta[] = [
     icon: "📡",
     desc: "Starlink · live SGP4",
   },
-  { key: "aurora", label: "Aurora", icon: "🌌", desc: "NOAA forecast" },
-  { key: "sun", label: "Sun", icon: "☀️", desc: "Day / night" },
-  { key: "events", label: "Natural events", icon: "🔥", desc: "NASA EONET" },
-  { key: "weather", label: "Weather", icon: "🌡️", desc: "Open-Meteo" },
 ];
 
 interface GlobeControlsProps {
@@ -97,31 +81,9 @@ export function GlobeControls({ layers, onToggle }: GlobeControlsProps) {
         })}
       </div>
 
-      {/* Earthquake legend (bottom-left) */}
-      {layers.earthquakes && (
-        <div className="pointer-events-auto absolute bottom-3 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-white/10 bg-neutral-900/70 px-3 py-2 text-[11px] text-neutral-300 shadow-xl backdrop-blur-md sm:bottom-4 sm:left-4 sm:text-xs">
-          <span className="font-medium text-white">Magnitude</span>
-          {[
-            { label: "<3", mag: 2 },
-            { label: "3–4.5", mag: 3.5 },
-            { label: "4.5–6", mag: 5 },
-            { label: "6+", mag: 6.5 },
-          ].map((s) => (
-            <span key={s.label} className="flex items-center gap-1.5">
-              <span
-                className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: magnitudeColor(s.mag) }}
-              />
-              {s.label}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Data sources (bottom-right, hidden on small screens) */}
+      {/* Data source (bottom-right, hidden on small screens) */}
       <div className="absolute bottom-3 right-3 hidden max-w-[45%] text-right text-[10px] leading-tight text-neutral-500 sm:bottom-4 sm:right-4 sm:block">
-        Data: USGS · wheretheiss.at · Celestrak · NOAA · NASA EONET ·
-        Open-Meteo
+        Data: wheretheiss.at · Celestrak
       </div>
     </div>
   );

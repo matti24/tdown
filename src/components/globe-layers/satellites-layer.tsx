@@ -79,6 +79,14 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
     [],
   );
 
+  // Touch devices can't hover, so we drive the tooltip by tap instead.
+  const isTouch = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(hover: none)").matches,
+    [],
+  );
+
   // Slice to the render budget (keep the small high-orbit groups whole, fill
   // the remainder with Starlink) and prebuild a colour-per-constellation cloud.
   const { working, geometry, counts } = useMemo(() => {
@@ -179,7 +187,7 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
 
   if (working.length === 0) return null;
 
-  const showTooltip = (event: ThreeEvent<PointerEvent>) => {
+  const showTooltip = (event: ThreeEvent<PointerEvent | MouseEvent>) => {
     const index = event.index;
     if (index == null) return;
     event.stopPropagation();
@@ -211,8 +219,10 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
       <points
         geometry={geometry}
         frustumCulled={false}
-        onPointerMove={showTooltip}
-        onPointerOut={hideTooltip}
+        onPointerMove={isTouch ? undefined : showTooltip}
+        onPointerOut={isTouch ? undefined : hideTooltip}
+        onClick={showTooltip}
+        onPointerMissed={hideTooltip}
       >
         <pointsMaterial
           size={0.02}
@@ -225,9 +235,13 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
       </points>
 
       {hovered && (
-        <Html position={hovered.position} center style={{ pointerEvents: "none" }}>
+        <Html
+          position={hovered.position}
+          center
+          style={{ pointerEvents: "none" }}
+        >
           <div
-            className="w-max -translate-y-8 rounded-lg border bg-neutral-900/90 px-2.5 py-1.5 text-xs shadow-xl backdrop-blur"
+            className="w-max max-w-[70vw] -translate-y-8 rounded-lg border bg-neutral-900/90 px-2.5 py-1.5 text-xs shadow-xl backdrop-blur"
             style={{ borderColor: `${hovered.color}66` }}
           >
             <div className="flex items-center gap-1.5 font-semibold text-white">
