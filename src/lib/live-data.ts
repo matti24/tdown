@@ -138,7 +138,8 @@ export async function fetchAurora(signal?: AbortSignal): Promise<AuroraPoint[]> 
   const coords: [number, number, number][] = data.coordinates ?? [];
   const points: AuroraPoint[] = [];
   for (const [lng, lat, value] of coords) {
-    if (value >= 3) {
+    // Skip the extreme poles where all longitudes converge into a bright blob.
+    if (value >= 3 && Math.abs(lat) <= 85) {
       points.push({ lat, lng: lng > 180 ? lng - 360 : lng, value });
     }
   }

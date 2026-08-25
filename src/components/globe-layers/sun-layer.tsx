@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Html } from "@react-three/drei";
 import { subsolarPoint } from "@/lib/sun";
 import { latLngToVector3, useGlobeRadius } from "@/lib/globe-utils";
+import { FacingHtml } from "./facing-html";
 
 /** Live subsolar point: sun glow in space, warm sunlight and a "solar noon" marker. */
 export function SunLayer() {
@@ -44,14 +44,12 @@ export function SunLayer() {
         </mesh>
       </group>
 
-      {/* Subsolar marker on the surface. */}
-      <group position={surfacePos}>
-        <Html center style={{ pointerEvents: "none" }}>
-          <div className="w-max -translate-y-6 rounded-full border border-amber-300/40 bg-neutral-900/85 px-2 py-0.5 text-xs font-medium text-amber-200 shadow-lg backdrop-blur">
-            ☀️ Solar noon
-          </div>
-        </Html>
-      </group>
+      {/* Subsolar marker on the surface (hidden when it faces away). */}
+      <FacingHtml position={surfacePos}>
+        <div className="w-max -translate-y-6 rounded-full border border-amber-300/40 bg-neutral-900/85 px-2 py-0.5 text-xs font-medium text-amber-200 shadow-lg backdrop-blur">
+          ☀️ Solar noon
+        </div>
+      </FacingHtml>
     </group>
   );
 }
