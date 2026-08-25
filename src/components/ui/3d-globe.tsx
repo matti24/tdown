@@ -384,6 +384,24 @@ interface SceneProps {
   children?: React.ReactNode;
 }
 
+/** Slows rotation as the camera moves closer, for finer control when zoomed in. */
+function AdaptiveControlSpeed({ min, max }: { min: number; max: number }) {
+  const controls = useThree((s) => s.controls) as unknown as {
+    rotateSpeed: number;
+  } | null;
+  const camera = useThree((s) => s.camera);
+  useFrame(() => {
+    if (!controls) return;
+    const t = THREE.MathUtils.clamp(
+      (camera.position.length() - min) / (max - min),
+      0,
+      1,
+    );
+    controls.rotateSpeed = 0.1 + t * 0.4;
+  });
+  return null;
+}
+
 function Scene({
   markers,
   config,
@@ -441,11 +459,16 @@ function Scene({
         enableZoom={config.enableZoom}
         minDistance={config.minDistance}
         maxDistance={config.maxDistance}
+        zoomSpeed={0.5}
         rotateSpeed={0.4}
         autoRotate={config.autoRotateSpeed > 0}
         autoRotateSpeed={config.autoRotateSpeed}
         enableDamping
         dampingFactor={0.1}
+      />
+      <AdaptiveControlSpeed
+        min={config.minDistance}
+        max={config.maxDistance}
       />
     </>
   );

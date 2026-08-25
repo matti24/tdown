@@ -4,6 +4,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { usePolling } from "@/hooks/use-live-data";
 import { latLngToVector3, useGlobeRadius } from "@/lib/globe-utils";
+import { airplaneTexture } from "@/lib/point-textures";
 import { fetchFlights, type Flight } from "@/lib/flights";
 
 const REFRESH_MS = 30_000;
@@ -122,17 +123,22 @@ export function FlightsLayer({ onCount }: FlightsLayerProps) {
         onPointerMissed={hideTooltip}
       >
         <pointsMaterial
-          size={0.026}
+          map={airplaneTexture()}
+          size={0.032}
           vertexColors
           sizeAttenuation
           transparent
-          opacity={1}
-          depthWrite={false}
+          alphaTest={0.5}
+          depthWrite
         />
       </points>
 
       {hovered && (
-        <Html position={hovered.position} center style={{ pointerEvents: "none" }}>
+        <Html
+          position={hovered.position}
+          center
+          style={{ pointerEvents: "none" }}
+        >
           <div className="w-max max-w-[70vw] -translate-y-8 rounded-lg border border-amber-400/40 bg-neutral-900/90 px-2.5 py-1.5 text-xs shadow-xl backdrop-blur">
             <div className="flex items-center gap-1.5 font-semibold text-white">
               <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />

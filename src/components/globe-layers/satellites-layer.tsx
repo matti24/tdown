@@ -10,6 +10,7 @@ import {
   fetchSatellites,
   propagateSatellite,
 } from "@/lib/satellites";
+import { circleTexture } from "@/lib/point-textures";
 
 const EARTH_RADIUS_KM = 6371;
 /** Seconds between full re-propagations of every satellite. */
@@ -225,11 +226,12 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
         onPointerMissed={hideTooltip}
       >
         <pointsMaterial
-          size={0.02}
+          map={circleTexture()}
+          size={0.022}
           vertexColors
           sizeAttenuation
           transparent
-          opacity={0.9}
+          opacity={0.95}
           depthWrite={false}
         />
       </points>
