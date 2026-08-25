@@ -22,6 +22,17 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(import.meta.dirname, "./src"),
+      // Keep satellite.js's optional WASM/pthreads runtimes (loaded lazily and
+      // never used here) out of the static build — they ship a worker with
+      // top-level await that Vite can't bundle. See satellite-wasm-stub.ts.
+      "#wasm-single-thread": resolve(
+        import.meta.dirname,
+        "./src/lib/satellite-wasm-stub.ts",
+      ),
+      "#wasm-multi-thread": resolve(
+        import.meta.dirname,
+        "./src/lib/satellite-wasm-stub.ts",
+      ),
     },
   },
 });

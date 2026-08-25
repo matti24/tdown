@@ -4,6 +4,7 @@ import { magnitudeColor } from "./globe-layers/earthquake-layer";
 export interface LayerState {
   earthquakes: boolean;
   iss: boolean;
+  satellites: boolean;
   aurora: boolean;
   sun: boolean;
   events: boolean;
@@ -25,6 +26,12 @@ const LAYER_META: LayerMeta[] = [
     desc: "USGS · last 24 h",
   },
   { key: "iss", label: "ISS", icon: "🛰️", desc: "Live position" },
+  {
+    key: "satellites",
+    label: "Satellites",
+    icon: "📡",
+    desc: "Starlink · live SGP4",
+  },
   { key: "aurora", label: "Aurora", icon: "🌌", desc: "NOAA forecast" },
   { key: "sun", label: "Sun", icon: "☀️", desc: "Day / night" },
   { key: "events", label: "Natural events", icon: "🔥", desc: "NASA EONET" },
@@ -113,7 +120,8 @@ export function GlobeControls({ layers, onToggle }: GlobeControlsProps) {
 
       {/* Data sources (bottom-right, hidden on small screens) */}
       <div className="absolute bottom-3 right-3 hidden max-w-[45%] text-right text-[10px] leading-tight text-neutral-500 sm:bottom-4 sm:right-4 sm:block">
-        Data: USGS · wheretheiss.at · NOAA · NASA EONET · Open-Meteo
+        Data: USGS · wheretheiss.at · Celestrak · NOAA · NASA EONET ·
+        Open-Meteo
       </div>
     </div>
   );
