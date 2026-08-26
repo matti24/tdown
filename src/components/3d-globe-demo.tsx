@@ -2,11 +2,15 @@ import { useCallback, useState } from "react";
 import { Globe3D } from "@/components/ui/3d-globe";
 import { GlobeControls, type LayerState } from "@/components/globe-controls";
 import { IssLayer } from "@/components/globe-layers/iss-layer";
-import { FlightsLayer } from "@/components/globe-layers/flights-layer";
+import {
+  FlightsLayer,
+  headingCompass,
+} from "@/components/globe-layers/flights-layer";
 import {
   SatellitesLayer,
   type SatelliteStats,
 } from "@/components/globe-layers/satellites-layer";
+import type { Flight } from "@/lib/flights";
 
 export default function Globe3DDemo() {
   const [layers, setLayers] = useState<LayerState>({
@@ -16,6 +20,7 @@ export default function Globe3DDemo() {
   });
   const [satStats, setSatStats] = useState<SatelliteStats | null>(null);
   const [flightCount, setFlightCount] = useState(0);
+  const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
 
   const toggle = (key: keyof LayerState) =>
     setLayers((l) => ({ ...l, [key]: !l[key] }));
@@ -27,6 +32,11 @@ export default function Globe3DDemo() {
 
   const handleFlightCount = useCallback(
     (count: number) => setFlightCount(count),
+    [],
+  );
+
+  const handleSelectFlight = useCallback(
+    (flight: Flight | null) => setSelectedFlight(flight),
     [],
   );
 
@@ -86,9 +96,109 @@ export default function Globe3DDemo() {
         }}
       >
         {layers.iss && <IssLayer />}
-        {layers.flights && <FlightsLayer onCount={handleFlightCount} />}
+        {layers.flights && (
+          <FlightsLayer
+            onCount={handleFlightCount}
+            onSelect={handleSelectFlight}
+            selectedCallsign={selectedFlight?.callsign ?? null}
+          />
+        )}
         {layers.satellites && <SatellitesLayer onStats={handleSatStats} />}
       </Globe3D>
+
+      {layers.flights && selectedFlight && (
+        <FlightDetailPanel
+          flight={selectedFlight}
+          onClose={() => setSelectedFlight(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function FlightDetailPanel({
+  flight,
+  onClose,
+}: {
+  flight: Flight;
+  onClose: () => void;
+}) {
+  const speedKmh = Math.round(flight.speedKt * 1.852);
+  const vr = flight.verticalRateMs;
+  const trend =
+    vr > 0.5
+      ? `↑ steigend (${Math.round(vr * 196.85)} ft/min)`
+      : vr < -0.5
+        ? `↓ sinkend (${Math.round(Math.abs(vr) * 196.85)} ft/min)`
+        : "→ Reiseflug";
+  return (
+    <div className="absolute bottom-3 left-3 z-20 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-amber-400/30 bg-neutral-900/80 p-3.5 shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-400/20 text-amber-300">
+            ✈️
+          </span>
+          <div>
+            <div className="text-sm font-semibold leading-tight text-white">
+              {flight.callsign || "Unbekannt"}
+            </div>
+            {flight.country && (
+              <div className="text-[11px] leading-tight text-neutral-400">
+                {flight.country}
+              </div>
+            )}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="-mr-1 -mt-1 rounded-lg px-1.5 py-0.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+          aria-label="Verfolgung beenden"
+        >
+          ✕
+        </button>
+      </div>
+
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+        <div>
+          <dt className="text-neutral-500">Geschwindigkeit</dt>
+          <dd className="font-medium text-neutral-200">
+            {speedKmh.toLocaleString("de-DE")} km/h
+          </dd>
+        </div>
+        <div>
+          <dt className="text-neutral-500">Höhe</dt>
+          <dd className="font-medium text-neutral-200">
+            {flight.altFt > 0
+              ? `${flight.altFt.toLocaleString("de-DE")} ft`
+              : "am Boden"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-neutral-500">Kurs</dt>
+          <dd className="font-medium text-neutral-200">
+            {Math.round(flight.trackDeg)}° {headingCompass(flight.trackDeg)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-neutral-500">Vertikal</dt>
+          <dd className="font-medium text-neutral-200">{trend}</dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-neutral-500">Position</dt>
+          <dd className="font-medium text-neutral-200">
+            {flight.lat.toFixed(3)}°, {flight.lng.toFixed(3)}°
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-3 flex items-center gap-1.5 text-[11px] text-amber-300/80">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
+        </span>
+        Kamera folgt dem Flugzeug
+      </div>
     </div>
   );
 }

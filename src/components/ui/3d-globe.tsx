@@ -466,10 +466,7 @@ function Scene({
         enableDamping
         dampingFactor={0.1}
       />
-      <AdaptiveControlSpeed
-        min={config.minDistance}
-        max={config.maxDistance}
-      />
+      <AdaptiveControlSpeed min={config.minDistance} max={config.maxDistance} />
     </>
   );
 }
