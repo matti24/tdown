@@ -21,6 +21,8 @@ const SCALE_MAX = 2.6;
 // Motion-streak ("contrail") length per knot of ground speed.
 const STREAK_PER_KT = 0.00007;
 const STREAK_MAX = 0.05;
+// Route-line height above the surface; kept flat so it never dips like a stopover.
+const ARC_LIFT = 1.02;
 
 interface FlightsLayerProps {
   onCount?: (count: number) => void;
@@ -75,7 +77,7 @@ function moveLatLng(
   };
 }
 
-/** Sample an arched great-circle path between two lat/lng as Vector3 points. */
+/** Sample a surface-hugging great-circle path between two lat/lng as points. */
 function greatCircleArc(
   latA: number,
   lngA: number,
@@ -89,8 +91,8 @@ function greatCircleArc(
   const omega = Math.acos(THREE.MathUtils.clamp(a.dot(b), -1, 1));
   if (omega < 1e-4) {
     return [
-      a.clone().multiplyScalar(radius * 1.012),
-      b.clone().multiplyScalar(radius * 1.012),
+      a.clone().multiplyScalar(radius * ARC_LIFT),
+      b.clone().multiplyScalar(radius * ARC_LIFT),
     ];
   }
   const sinO = Math.sin(omega);
@@ -101,8 +103,7 @@ function greatCircleArc(
     const s0 = Math.sin((1 - t) * omega) / sinO;
     const s1 = Math.sin(t * omega) / sinO;
     v.copy(a).multiplyScalar(s0).addScaledVector(b, s1).normalize();
-    const lift = radius * (1.012 + 0.06 * Math.sin(Math.PI * t));
-    pts.push(v.clone().multiplyScalar(lift));
+    pts.push(v.clone().multiplyScalar(radius * ARC_LIFT));
   }
   return pts;
 }
