@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { Html, Line } from "@react-three/drei";
 import * as THREE from "three";
 import { usePolling } from "@/hooks/use-live-data";
 import { latLngToVector3, useGlobeRadius } from "@/lib/globe-utils";
@@ -13,6 +13,7 @@ const EARTH_KM = 6371;
 const PLANE_SIZE = 0.042;
 const MAX_FLIGHTS = 20000;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
+const ORIGIN = new THREE.Vector3(0, 0, 0);
 // Zoom-adaptive icon scale: roughly constant on-screen size so zooming in
 // pulls dense clusters apart into distinguishable aircraft.
 const SCALE_REF = 6;
@@ -26,6 +27,17 @@ interface FlightsLayerProps {
   onCount?: (count: number) => void;
   onSelect?: (flight: Flight | null) => void;
   selectedCallsign?: string | null;
+  route?: RouteArc | null;
+}
+
+/** Airport coordinates for drawing a selected flight's path arcs. */
+export interface RouteArc {
+  originLat: number;
+  originLng: number;
+  destLat?: number;
+  destLng?: number;
+  planeLat: number;
+  planeLng: number;
 }
 
 interface HoveredFlight {
@@ -64,6 +76,38 @@ function moveLatLng(
   };
 }
 
+/** Sample an arched great-circle path between two lat/lng as Vector3 points. */
+function greatCircleArc(
+  latA: number,
+  lngA: number,
+  latB: number,
+  lngB: number,
+  radius: number,
+  segments = 64,
+): THREE.Vector3[] {
+  const a = latLngToVector3(latA, lngA, 1).normalize();
+  const b = latLngToVector3(latB, lngB, 1).normalize();
+  const omega = Math.acos(THREE.MathUtils.clamp(a.dot(b), -1, 1));
+  if (omega < 1e-4) {
+    return [
+      a.clone().multiplyScalar(radius * 1.012),
+      b.clone().multiplyScalar(radius * 1.012),
+    ];
+  }
+  const sinO = Math.sin(omega);
+  const pts: THREE.Vector3[] = [];
+  const v = new THREE.Vector3();
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const s0 = Math.sin((1 - t) * omega) / sinO;
+    const s1 = Math.sin(t * omega) / sinO;
+    v.copy(a).multiplyScalar(s0).addScaledVector(b, s1).normalize();
+    const lift = radius * (1.012 + 0.06 * Math.sin(Math.PI * t));
+    pts.push(v.clone().multiplyScalar(lift));
+  }
+  return pts;
+}
+
 /**
  * Live aircraft as heading-oriented airplane icons lying flat on the globe
  * (InstancedMesh), with speed/direction contrails, zoom-adaptive sizing and
@@ -73,6 +117,7 @@ export function FlightsLayer({
   onCount,
   onSelect,
   selectedCallsign,
+  route,
 }: FlightsLayerProps) {
   const radius = useGlobeRadius();
   const camera = useThree((s) => s.camera);
@@ -105,6 +150,34 @@ export function FlightsLayer({
   );
 
   const flights = useMemo(() => data ?? [], [data]);
+
+  const originArc = useMemo(
+    () =>
+      route
+        ? greatCircleArc(
+            route.originLat,
+            route.originLng,
+            route.planeLat,
+            route.planeLng,
+            radius,
+          )
+        : null,
+    [route, radius],
+  );
+
+  const destArc = useMemo(
+    () =>
+      route && route.destLat != null && route.destLng != null
+        ? greatCircleArc(
+            route.planeLat,
+            route.planeLng,
+            route.destLat,
+            route.destLng,
+            radius,
+          )
+        : null,
+    [route, radius],
+  );
 
   const geometry = useMemo(
     () => new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE),
@@ -299,8 +372,15 @@ export function FlightsLayer({
       if (controls?.target) {
         controls.target.lerp(mesh.localToWorld(local.clone()), 0.08);
       }
-    } else if (ring) {
-      ring.visible = false;
+    } else {
+      if (ring) ring.visible = false;
+      // Restore the orbit centre to the globe after following ends, so panning
+      // and zooming feel the same as before a flight was selected.
+      const target = controls?.target;
+      if (target && target.lengthSq() > 1e-5) {
+        target.lerp(ORIGIN, 0.12);
+        if (target.lengthSq() < 1e-5) target.set(0, 0, 0);
+      }
     }
   });
 
@@ -387,6 +467,27 @@ export function FlightsLayer({
           toneMapped={false}
         />
       </mesh>
+
+      {originArc && (
+        <Line
+          points={originArc}
+          color="#ffd24d"
+          lineWidth={2.4}
+          transparent
+          opacity={0.9}
+        />
+      )}
+      {destArc && (
+        <Line
+          points={destArc}
+          color="#7dd3fc"
+          lineWidth={1.8}
+          dashed
+          dashScale={40}
+          transparent
+          opacity={0.55}
+        />
+      )}
 
       {hovered && (
         <Html

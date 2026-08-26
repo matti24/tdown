@@ -1,16 +1,14 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Globe3D } from "@/components/ui/3d-globe";
 import { GlobeControls, type LayerState } from "@/components/globe-controls";
 import { IssLayer } from "@/components/globe-layers/iss-layer";
-import {
-  FlightsLayer,
-  headingCompass,
-} from "@/components/globe-layers/flights-layer";
+import { FlightsLayer } from "@/components/globe-layers/flights-layer";
 import {
   SatellitesLayer,
   type SatelliteStats,
 } from "@/components/globe-layers/satellites-layer";
 import type { Flight } from "@/lib/flights";
+import { fetchFlightInfo, type FlightInfo } from "@/lib/flight-info";
 
 export default function Globe3DDemo() {
   const [layers, setLayers] = useState<LayerState>({
@@ -21,6 +19,8 @@ export default function Globe3DDemo() {
   const [satStats, setSatStats] = useState<SatelliteStats | null>(null);
   const [flightCount, setFlightCount] = useState(0);
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
+  const [flightInfo, setFlightInfo] = useState<FlightInfo | null>(null);
+  const [infoLoading, setInfoLoading] = useState(false);
 
   const toggle = (key: keyof LayerState) =>
     setLayers((l) => ({ ...l, [key]: !l[key] }));
@@ -39,6 +39,51 @@ export default function Globe3DDemo() {
     (flight: Flight | null) => setSelectedFlight(flight),
     [],
   );
+
+  // Fetch route + aircraft metadata when a different flight is selected.
+  useEffect(() => {
+    const callsign = selectedFlight?.callsign;
+    if (!callsign || callsign === "\u2014") {
+      setFlightInfo(null);
+      setInfoLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setInfoLoading(true);
+    setFlightInfo(null);
+    fetchFlightInfo(callsign, selectedFlight?.icao24)
+      .then((info) => {
+        if (!cancelled) {
+          setFlightInfo(info);
+          setInfoLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setInfoLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFlight?.callsign, selectedFlight?.icao24]);
+
+  const route = useMemo(() => {
+    if (
+      !selectedFlight ||
+      !flightInfo ||
+      flightInfo.originLat == null ||
+      flightInfo.originLng == null
+    ) {
+      return null;
+    }
+    return {
+      originLat: flightInfo.originLat,
+      originLng: flightInfo.originLng,
+      destLat: flightInfo.destLat,
+      destLng: flightInfo.destLng,
+      planeLat: selectedFlight.lat,
+      planeLng: selectedFlight.lng,
+    };
+  }, [selectedFlight, flightInfo]);
 
   return (
     <div className="relative h-full w-full">
@@ -101,6 +146,7 @@ export default function Globe3DDemo() {
             onCount={handleFlightCount}
             onSelect={handleSelectFlight}
             selectedCallsign={selectedFlight?.callsign ?? null}
+            route={route}
           />
         )}
         {layers.satellites && <SatellitesLayer onStats={handleSatStats} />}
@@ -109,6 +155,8 @@ export default function Globe3DDemo() {
       {layers.flights && selectedFlight && (
         <FlightDetailPanel
           flight={selectedFlight}
+          info={flightInfo}
+          loading={infoLoading}
           onClose={() => setSelectedFlight(null)}
         />
       )}
@@ -118,9 +166,13 @@ export default function Globe3DDemo() {
 
 function FlightDetailPanel({
   flight,
+  info,
+  loading,
   onClose,
 }: {
   flight: Flight;
+  info: FlightInfo | null;
+  loading: boolean;
   onClose: () => void;
 }) {
   const speedKmh = Math.round(flight.speedKt * 1.852);
@@ -131,6 +183,10 @@ function FlightDetailPanel({
       : vr < -0.5
         ? `↓ sinkend (${Math.round(Math.abs(vr) * 196.85)} ft/min)`
         : "→ Reiseflug";
+  const fallback = loading ? "…" : "unbekannt";
+  const airline = info?.airline || fallback;
+  const model =
+    [info?.manufacturer, info?.model].filter(Boolean).join(" ") || fallback;
   return (
     <div className="absolute bottom-3 left-3 z-20 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-amber-400/30 bg-neutral-900/80 p-3.5 shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-4">
       <div className="flex items-start justify-between gap-2">
@@ -142,11 +198,9 @@ function FlightDetailPanel({
             <div className="text-sm font-semibold leading-tight text-white">
               {flight.callsign || "Unbekannt"}
             </div>
-            {flight.country && (
-              <div className="text-[11px] leading-tight text-neutral-400">
-                {flight.country}
-              </div>
-            )}
+            <div className="text-[11px] leading-tight text-neutral-400">
+              {airline}
+            </div>
           </div>
         </div>
         <button
@@ -159,7 +213,44 @@ function FlightDetailPanel({
         </button>
       </div>
 
+      {info?.photo && (
+        <img
+          src={info.photo}
+          alt={model}
+          loading="lazy"
+          className="mt-3 h-24 w-full rounded-lg object-cover"
+        />
+      )}
+
+      <div className="mt-3 flex items-center gap-2 text-xs">
+        <div className="flex min-w-0 flex-col">
+          <span className="text-sm font-semibold text-white">
+            {info?.originIata || "—"}
+          </span>
+          <span className="truncate text-[10px] text-neutral-500">
+            {info?.originCity || (loading ? "…" : "Herkunft")}
+          </span>
+        </div>
+        <div className="flex flex-1 items-center gap-1 text-amber-300/70">
+          <span className="h-px flex-1 bg-gradient-to-r from-transparent to-amber-300/50" />
+          <span>✈</span>
+          <span className="h-px flex-1 bg-gradient-to-r from-amber-300/50 to-transparent" />
+        </div>
+        <div className="flex min-w-0 flex-col items-end">
+          <span className="text-sm font-semibold text-white">
+            {info?.destIata || "—"}
+          </span>
+          <span className="truncate text-[10px] text-neutral-500">
+            {info?.destCity || (loading ? "…" : "Ziel")}
+          </span>
+        </div>
+      </div>
+
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+        <div className="col-span-2">
+          <dt className="text-neutral-500">Modell</dt>
+          <dd className="font-medium text-neutral-200">{model}</dd>
+        </div>
         <div>
           <dt className="text-neutral-500">Geschwindigkeit</dt>
           <dd className="font-medium text-neutral-200">
@@ -174,21 +265,9 @@ function FlightDetailPanel({
               : "am Boden"}
           </dd>
         </div>
-        <div>
-          <dt className="text-neutral-500">Kurs</dt>
-          <dd className="font-medium text-neutral-200">
-            {Math.round(flight.trackDeg)}° {headingCompass(flight.trackDeg)}
-          </dd>
-        </div>
-        <div>
+        <div className="col-span-2">
           <dt className="text-neutral-500">Vertikal</dt>
           <dd className="font-medium text-neutral-200">{trend}</dd>
-        </div>
-        <div className="col-span-2">
-          <dt className="text-neutral-500">Position</dt>
-          <dd className="font-medium text-neutral-200">
-            {flight.lat.toFixed(3)}°, {flight.lng.toFixed(3)}°
-          </dd>
         </div>
       </dl>
 

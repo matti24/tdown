@@ -1,7 +1,8 @@
 // Live aircraft via a personal Deno Deploy proxy that fetches OpenSky
 // server-side (Cloudflare IPs are blocked by OpenSky) and adds CORS, returning
-// a compact { ac: [{ c, la, lo, al, s, t, vr, co }] } payload (al = feet,
-// s = knots, t = track°, vr = vertical rate m/s, co = origin country).
+// a compact { ac: [{ c, la, lo, al, s, t, vr, co, i }] } payload (al = feet,
+// s = knots, t = track°, vr = vertical rate m/s, co = origin country,
+// i = icao24 / mode-s hex, optional – needed for the aircraft model lookup).
 const FLIGHTS_PROXY = "https://comfortable-cheetah-8401.matti24.deno.net/";
 
 export interface Flight {
@@ -18,6 +19,8 @@ export interface Flight {
   verticalRateMs: number;
   /** Origin country. */
   country: string;
+  /** ICAO24 transponder hex (mode-s), if the proxy provides it. */
+  icao24?: string;
 }
 
 interface RawFlight {
@@ -29,6 +32,7 @@ interface RawFlight {
   t?: number;
   vr?: number;
   co?: string;
+  i?: string;
 }
 
 /** Fetch the current live aircraft snapshot from the proxy. */
@@ -48,5 +52,6 @@ export async function fetchFlights(signal?: AbortSignal): Promise<Flight[]> {
       trackDeg: Number(a.t) || 0,
       verticalRateMs: Number(a.vr) || 0,
       country: (a.co ?? "").trim(),
+      icao24: (a.i ?? "").trim() || undefined,
     }));
 }
