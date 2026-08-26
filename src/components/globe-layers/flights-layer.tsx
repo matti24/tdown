@@ -16,9 +16,6 @@ const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const SCALE_REF = 6;
 const SCALE_MIN = 0.4;
 const SCALE_MAX = 2.6;
-// Motion-streak ("contrail") length per knot of ground speed.
-const STREAK_PER_KT = 0.00007;
-const STREAK_MAX = 0.05;
 // Route-line height above the surface; kept flat so it never dips like a stopover.
 const ARC_LIFT = 1.02;
 
@@ -108,8 +105,8 @@ function greatCircleArc(
 
 /**
  * Live aircraft as heading-oriented airplane icons lying flat on the globe
- * (InstancedMesh), with speed/direction contrails, zoom-adaptive sizing and
- * click-to-follow. One quad per flight, rotated to its true track.
+ * (InstancedMesh), with zoom-adaptive sizing and click-to-follow. One quad per
+ * flight, rotated to its true track.
  */
 export function FlightsLayer({
   flights,
@@ -193,42 +190,15 @@ export function FlightsLayer({
     return mat;
   }, []);
 
-  const streakGeometry = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute(
-      "position",
-      new THREE.BufferAttribute(new Float32Array(MAX_FLIGHTS * 2 * 3), 3),
-    );
-    g.setAttribute(
-      "color",
-      new THREE.BufferAttribute(new Float32Array(MAX_FLIGHTS * 2 * 3), 3),
-    );
-    g.setDrawRange(0, 0);
-    return g;
-  }, []);
-
-  const streakMaterial = useMemo(
-    () =>
-      new THREE.LineBasicMaterial({
-        vertexColors: true,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      }),
-    [],
-  );
-
   useEffect(
     () => () => {
       geometry.dispose();
       material.dispose();
-      streakGeometry.dispose();
-      streakMaterial.dispose();
     },
-    [geometry, material, streakGeometry, streakMaterial],
+    [geometry, material],
   );
 
-  // Rebuild instance transforms, colours and contrails whenever data changes.
+  // Rebuild instance transforms and colours whenever the data changes.
   useEffect(() => {
     const mesh = meshRef.current;
     if (!mesh) return;
@@ -238,12 +208,9 @@ export function FlightsLayer({
     const east = new THREE.Vector3();
     const nose = new THREE.Vector3();
     const xAxis = new THREE.Vector3();
-    const tail = new THREE.Vector3();
     const matrix = new THREE.Matrix4();
     const color = new THREE.Color();
     const count = Math.min(flights.length, MAX_FLIGHTS);
-    const sPos = streakGeometry.getAttribute("position").array as Float32Array;
-    const sCol = streakGeometry.getAttribute("color").array as Float32Array;
 
     for (let i = 0; i < count; i++) {
       const f = flights[i];
@@ -267,35 +234,13 @@ export function FlightsLayer({
       const t = Math.min(altKm / CRUISE_KM, 1);
       color.setRGB(1, 0.55 + 0.4 * t, 0.15 + 0.6 * t);
       mesh.setColorAt(i, color);
-
-      // Contrail: a short line trailing behind, fading amber -> black (additive).
-      const len = Math.min(STREAK_MAX, f.speedKt * STREAK_PER_KT);
-      tail.copy(pos).addScaledVector(nose, -len);
-      const j = i * 6;
-      sPos[j] = pos.x;
-      sPos[j + 1] = pos.y;
-      sPos[j + 2] = pos.z;
-      sPos[j + 3] = tail.x;
-      sPos[j + 4] = tail.y;
-      sPos[j + 5] = tail.z;
-      sCol[j] = color.r;
-      sCol[j + 1] = color.g;
-      sCol[j + 2] = color.b;
-      sCol[j + 3] = 0;
-      sCol[j + 4] = 0;
-      sCol[j + 5] = 0;
     }
 
     mesh.count = count;
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.computeBoundingSphere();
-
-    streakGeometry.setDrawRange(0, count * 2);
-    streakGeometry.getAttribute("position").needsUpdate = true;
-    streakGeometry.getAttribute("color").needsUpdate = true;
-    streakGeometry.computeBoundingSphere();
-  }, [flights, radius, streakGeometry]);
+  }, [flights, radius]);
 
   // Keep the followed aircraft synced to the latest snapshot (and refresh panel).
   useEffect(() => {
@@ -420,11 +365,6 @@ export function FlightsLayer({
 
   return (
     <group>
-      <lineSegments
-        geometry={streakGeometry}
-        material={streakMaterial}
-        frustumCulled={false}
-      />
       <instancedMesh
         ref={meshRef}
         args={[geometry, material, MAX_FLIGHTS]}
