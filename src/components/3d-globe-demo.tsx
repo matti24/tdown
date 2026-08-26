@@ -7,8 +7,11 @@ import {
   SatellitesLayer,
   type SatelliteStats,
 } from "@/components/globe-layers/satellites-layer";
-import type { Flight } from "@/lib/flights";
+import { fetchFlights, type Flight } from "@/lib/flights";
 import { fetchFlightInfo, type FlightInfo } from "@/lib/flight-info";
+import { usePolling } from "@/hooks/use-live-data";
+
+const FLIGHTS_REFRESH_MS = 30_000;
 
 export default function Globe3DDemo() {
   const [layers, setLayers] = useState<LayerState>({
@@ -17,21 +20,28 @@ export default function Globe3DDemo() {
     satellites: true,
   });
   const [satStats, setSatStats] = useState<SatelliteStats | null>(null);
-  const [flightCount, setFlightCount] = useState(0);
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [flightInfo, setFlightInfo] = useState<FlightInfo | null>(null);
   const [infoLoading, setInfoLoading] = useState(false);
+
+  // One live-flights poll drives both the layer and the "is it available?" gate.
+  const { data: flightsData, error: flightsError } = usePolling(
+    fetchFlights,
+    FLIGHTS_REFRESH_MS,
+    true,
+  );
+  const flights = useMemo(() => flightsData ?? [], [flightsData]);
+  const flightsAvailable = flightsError
+    ? false
+    : flightsData
+      ? flights.length > 0
+      : true;
 
   const toggle = (key: keyof LayerState) =>
     setLayers((l) => ({ ...l, [key]: !l[key] }));
 
   const handleSatStats = useCallback(
     (stats: SatelliteStats | null) => setSatStats(stats),
-    [],
-  );
-
-  const handleFlightCount = useCallback(
-    (count: number) => setFlightCount(count),
     [],
   );
 
@@ -85,15 +95,24 @@ export default function Globe3DDemo() {
     };
   }, [selectedFlight, flightInfo]);
 
+  // Drop any selection when flights vanish (e.g. API quota used up).
+  useEffect(() => {
+    if (!flightsAvailable) setSelectedFlight(null);
+  }, [flightsAvailable]);
+
   return (
     <div className="relative h-full w-full">
-      <GlobeControls layers={layers} onToggle={toggle} />
+      <GlobeControls
+        layers={layers}
+        onToggle={toggle}
+        hidden={{ flights: !flightsAvailable }}
+      />
 
-      {layers.flights && flightCount > 0 && (
+      {layers.flights && flightsAvailable && flights.length > 0 && (
         <div className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md sm:right-4 sm:top-4">
           <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
           <span className="text-sm font-semibold text-white">
-            ✈️ {flightCount.toLocaleString("en-US")}
+            ✈️ {flights.length.toLocaleString("en-US")}
           </span>
           <span className="hidden text-[11px] text-neutral-400 sm:inline">
             flights live
@@ -141,9 +160,9 @@ export default function Globe3DDemo() {
         }}
       >
         {layers.iss && <IssLayer />}
-        {layers.flights && (
+        {layers.flights && flightsAvailable && (
           <FlightsLayer
-            onCount={handleFlightCount}
+            flights={flights}
             onSelect={handleSelectFlight}
             selectedCallsign={selectedFlight?.callsign ?? null}
             route={route}
@@ -152,7 +171,7 @@ export default function Globe3DDemo() {
         {layers.satellites && <SatellitesLayer onStats={handleSatStats} />}
       </Globe3D>
 
-      {layers.flights && selectedFlight && (
+      {layers.flights && flightsAvailable && selectedFlight && (
         <FlightDetailPanel
           flight={selectedFlight}
           info={flightInfo}

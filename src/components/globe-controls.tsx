@@ -27,9 +27,10 @@ const LAYER_META: LayerMeta[] = [
 interface GlobeControlsProps {
   layers: LayerState;
   onToggle: (key: keyof LayerState) => void;
+  hidden?: Partial<Record<keyof LayerState, boolean>>;
 }
 
-export function GlobeControls({ layers, onToggle }: GlobeControlsProps) {
+export function GlobeControls({ layers, onToggle, hidden }: GlobeControlsProps) {
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
       {/* Layer toggles (top-left) */}
@@ -42,7 +43,7 @@ export function GlobeControls({ layers, onToggle }: GlobeControlsProps) {
           <h2 className="text-sm font-semibold text-white">Live Layers</h2>
         </div>
 
-        {LAYER_META.map((m) => {
+        {LAYER_META.filter((m) => !hidden?.[m.key]).map((m) => {
           const active = layers[m.key];
           return (
             <button

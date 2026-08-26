@@ -2,12 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
 import * as THREE from "three";
-import { usePolling } from "@/hooks/use-live-data";
 import { latLngToVector3, useGlobeRadius } from "@/lib/globe-utils";
 import { airplaneTexture } from "@/lib/point-textures";
-import { fetchFlights, type Flight } from "@/lib/flights";
+import { type Flight } from "@/lib/flights";
 
-const REFRESH_MS = 30_000;
 const CRUISE_KM = 11;
 const EARTH_KM = 6371;
 const PLANE_SIZE = 0.042;
@@ -25,7 +23,7 @@ const STREAK_MAX = 0.05;
 const ARC_LIFT = 1.02;
 
 interface FlightsLayerProps {
-  onCount?: (count: number) => void;
+  flights: Flight[];
   onSelect?: (flight: Flight | null) => void;
   selectedCallsign?: string | null;
   route?: RouteArc | null;
@@ -114,19 +112,16 @@ function greatCircleArc(
  * click-to-follow. One quad per flight, rotated to its true track.
  */
 export function FlightsLayer({
-  onCount,
+  flights,
   onSelect,
   selectedCallsign,
   route,
 }: FlightsLayerProps) {
   const radius = useGlobeRadius();
   const camera = useThree((s) => s.camera);
-  const { data } = usePolling(fetchFlights, REFRESH_MS, true);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const ringRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState<HoveredFlight | null>(null);
-  const onCountRef = useRef(onCount);
-  onCountRef.current = onCount;
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const scaleUniform = useRef({ value: 1 });
@@ -145,8 +140,6 @@ export function FlightsLayer({
       window.matchMedia("(hover: none)").matches,
     [],
   );
-
-  const flights = useMemo(() => data ?? [], [data]);
 
   const originArc = useMemo(
     () =>
@@ -302,8 +295,6 @@ export function FlightsLayer({
     streakGeometry.getAttribute("position").needsUpdate = true;
     streakGeometry.getAttribute("color").needsUpdate = true;
     streakGeometry.computeBoundingSphere();
-
-    onCountRef.current?.(flights.length);
   }, [flights, radius, streakGeometry]);
 
   // Keep the followed aircraft synced to the latest snapshot (and refresh panel).
