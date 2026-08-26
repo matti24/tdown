@@ -13,7 +13,6 @@ const EARTH_KM = 6371;
 const PLANE_SIZE = 0.042;
 const MAX_FLIGHTS = 20000;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
-const ORIGIN = new THREE.Vector3(0, 0, 0);
 // Zoom-adaptive icon scale: roughly constant on-screen size so zooming in
 // pulls dense clusters apart into distinguishable aircraft.
 const SCALE_REF = 6;
@@ -121,9 +120,6 @@ export function FlightsLayer({
 }: FlightsLayerProps) {
   const radius = useGlobeRadius();
   const camera = useThree((s) => s.camera);
-  const controls = useThree((s) => s.controls) as unknown as {
-    target: THREE.Vector3;
-  } | null;
   const { data } = usePolling(fetchFlights, REFRESH_MS, true);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const ringRef = useRef<THREE.Mesh>(null);
@@ -347,41 +343,31 @@ export function FlightsLayer({
       Math.max(SCALE_MIN, dist / SCALE_REF),
     );
 
+    // Highlight ring only – the camera is never taken over, so the globe stays
+    // freely orbitable while a flight and its route line are shown.
     const live = followed.current;
     const ring = ringRef.current;
-    const mesh = meshRef.current;
-    if (live && mesh) {
-      const distKm = ((live.speedKt * 1.852) / 3600) * delta;
-      if (distKm > 0) {
-        const moved = moveLatLng(live.lat, live.lng, live.trackDeg, distKm);
-        live.lat = moved.lat;
-        live.lng = moved.lng;
-      }
-      const altKm = live.altFt * 0.0003048;
-      const local = latLngToVector3(
-        live.lat,
-        live.lng,
-        radius * altitudeFactor(altKm),
-      );
-      if (ring) {
-        ring.visible = true;
-        ring.position.copy(local);
-        ring.lookAt(local.clone().multiplyScalar(2));
-        ring.scale.setScalar(1 + 0.25 * Math.sin(state.clock.elapsedTime * 4));
-      }
-      if (controls?.target) {
-        controls.target.lerp(mesh.localToWorld(local.clone()), 0.08);
-      }
-    } else {
-      if (ring) ring.visible = false;
-      // Restore the orbit centre to the globe after following ends, so panning
-      // and zooming feel the same as before a flight was selected.
-      const target = controls?.target;
-      if (target && target.lengthSq() > 1e-5) {
-        target.lerp(ORIGIN, 0.12);
-        if (target.lengthSq() < 1e-5) target.set(0, 0, 0);
-      }
+    if (!ring) return;
+    if (!live) {
+      ring.visible = false;
+      return;
     }
+    const distKm = ((live.speedKt * 1.852) / 3600) * delta;
+    if (distKm > 0) {
+      const moved = moveLatLng(live.lat, live.lng, live.trackDeg, distKm);
+      live.lat = moved.lat;
+      live.lng = moved.lng;
+    }
+    const altKm = live.altFt * 0.0003048;
+    const local = latLngToVector3(
+      live.lat,
+      live.lng,
+      radius * altitudeFactor(altKm),
+    );
+    ring.visible = true;
+    ring.position.copy(local);
+    ring.lookAt(local.clone().multiplyScalar(2));
+    ring.scale.setScalar(1 + 0.25 * Math.sin(state.clock.elapsedTime * 4));
   });
 
   if (flights.length === 0) return null;

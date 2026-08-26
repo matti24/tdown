@@ -276,7 +276,7 @@ function FlightDetailPanel({
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
         </span>
-        Kamera folgt dem Flugzeug
+        Frei drehbar – dem Flugweg folgen
       </div>
     </div>
   );
