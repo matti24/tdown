@@ -26,7 +26,7 @@ export interface Ship {
 // >>> HIER deinen kostenlosen aisstream.io API-Key eintragen, damit die Schiffe
 //     dauerhaft laden (auch auf der veröffentlichten Seite). Hinweis: bei einem
 //     öffentlichen Repo ist der Key im Frontend sichtbar – notfalls neu erzeugen.
-const AIS_KEY = "";
+const AIS_KEY = "67772f77bf55dda08425368d83fd7bd935d1a833";
 
 /** Resolve the AISStream API key: env / localStorage override, else AIS_KEY. */
 function aisKey(): string {
