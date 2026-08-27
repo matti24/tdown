@@ -358,11 +358,6 @@ export function FlightsLayer({
     onSelectRef.current?.(flight);
   };
 
-  const clearSelection = () => {
-    setHovered(null);
-    onSelectRef.current?.(null);
-  };
-
   return (
     <group>
       <instancedMesh
@@ -372,7 +367,7 @@ export function FlightsLayer({
         onPointerMove={isTouch ? undefined : showTooltip}
         onPointerOut={isTouch ? undefined : hideTooltip}
         onClick={selectFlight}
-        onPointerMissed={clearSelection}
+        onPointerMissed={hideTooltip}
       />
       <mesh ref={ringRef} visible={false}>
         <ringGeometry args={[0.02, 0.03, 32]} />

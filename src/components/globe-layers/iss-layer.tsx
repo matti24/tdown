@@ -3,19 +3,31 @@ import { useFrame } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
 import * as THREE from "three";
 import { usePolling } from "@/hooks/use-live-data";
-import { fetchIss } from "@/lib/live-data";
+import { fetchIss, type IssPosition } from "@/lib/live-data";
 import { latLngToVector3, useGlobeRadius } from "@/lib/globe-utils";
 
 const ISS_ALTITUDE_FACTOR = 1.22;
 const TRAIL_LENGTH = 150;
 
+interface IssLayerProps {
+  onSelect?: (data: IssPosition | null) => void;
+  selected?: boolean;
+}
+
 /** Live-Position der ISS (wheretheiss.at) mit weich interpolierter Bewegung und Flugbahn. */
-export function IssLayer() {
+export function IssLayer({ onSelect, selected }: IssLayerProps) {
   const radius = useGlobeRadius();
   const { data } = usePolling(fetchIss, 5000, true);
   const markerRef = useRef<THREE.Group>(null);
   const initialized = useRef(false);
   const [trail, setTrail] = useState<THREE.Vector3[]>([]);
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+
+  // Keep the detail panel's ISS data live while it is selected.
+  useEffect(() => {
+    if (selected && data) onSelectRef.current?.(data);
+  }, [selected, data]);
 
   useEffect(() => {
     if (!data) return;
@@ -53,10 +65,37 @@ export function IssLayer() {
       )}
 
       <group ref={markerRef}>
+        <mesh
+          onClick={(e) => {
+            e.stopPropagation();
+            if (data) onSelectRef.current?.(data);
+          }}
+          onPointerOver={() => {
+            document.body.style.cursor = "pointer";
+          }}
+          onPointerOut={() => {
+            document.body.style.cursor = "";
+          }}
+        >
+          <sphereGeometry args={[0.09, 12, 12]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
         <mesh>
           <sphereGeometry args={[0.03, 16, 16]} />
           <meshBasicMaterial color="#4da6ff" toneMapped={false} />
         </mesh>
+        {selected && (
+          <mesh>
+            <sphereGeometry args={[0.055, 16, 16]} />
+            <meshBasicMaterial
+              color="#4da6ff"
+              transparent
+              opacity={0.22}
+              toneMapped={false}
+              depthWrite={false}
+            />
+          </mesh>
+        )}
         <pointLight color="#4da6ff" intensity={2} distance={0.6} />
         <Html center style={{ pointerEvents: "none" }}>
           <div className="w-max -translate-y-7 rounded-full border border-sky-400/40 bg-neutral-900/90 px-2 py-0.5 text-xs font-medium text-sky-300 shadow-lg backdrop-blur">

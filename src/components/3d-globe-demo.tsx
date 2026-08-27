@@ -7,13 +7,27 @@ import { ShipsLayer } from "@/components/globe-layers/ships-layer";
 import {
   SatellitesLayer,
   type SatelliteStats,
+  type SatSelection,
 } from "@/components/globe-layers/satellites-layer";
 import { fetchFlights, type Flight } from "@/lib/flights";
 import { fetchFlightInfo, type FlightInfo } from "@/lib/flight-info";
-import { useAisStream, hasAisKey } from "@/lib/ships";
+import {
+  useAisStream,
+  hasAisKey,
+  shipCategory,
+  shipFlag,
+  type Ship,
+} from "@/lib/ships";
+import { type IssPosition } from "@/lib/live-data";
+import { fetchWikiInfo, type WikiInfo } from "@/lib/wiki";
 import { usePolling } from "@/hooks/use-live-data";
 
 const FLIGHTS_REFRESH_MS = 30_000;
+
+type SelInfo =
+  | { kind: "ship"; ship: Ship }
+  | { kind: "sat"; sat: SatSelection }
+  | { kind: "iss"; iss: IssPosition };
 
 export default function Globe3DDemo() {
   const [layers, setLayers] = useState<LayerState>({
@@ -26,6 +40,9 @@ export default function Globe3DDemo() {
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [flightInfo, setFlightInfo] = useState<FlightInfo | null>(null);
   const [infoLoading, setInfoLoading] = useState(false);
+  const [selectedInfo, setSelectedInfo] = useState<SelInfo | null>(null);
+  const [wiki, setWiki] = useState<WikiInfo | null>(null);
+  const [wikiLoading, setWikiLoading] = useState(false);
 
   // One live-flights poll drives both the layer and the "is it available?" gate.
   const { data: flightsData, error: flightsError } = usePolling(
@@ -52,10 +69,30 @@ export default function Globe3DDemo() {
     [],
   );
 
-  const handleSelectFlight = useCallback(
-    (flight: Flight | null) => setSelectedFlight(flight),
-    [],
-  );
+  const handleSelectFlight = useCallback((flight: Flight | null) => {
+    setSelectedFlight(flight);
+    if (flight) setSelectedInfo(null);
+  }, []);
+
+  const handleSelectShip = useCallback((ship: Ship | null) => {
+    setSelectedInfo(ship ? { kind: "ship", ship } : null);
+    if (ship) setSelectedFlight(null);
+  }, []);
+
+  const handleSelectSat = useCallback((sat: SatSelection | null) => {
+    setSelectedInfo(sat ? { kind: "sat", sat } : null);
+    if (sat) setSelectedFlight(null);
+  }, []);
+
+  const handleSelectIss = useCallback((iss: IssPosition | null) => {
+    setSelectedInfo(iss ? { kind: "iss", iss } : null);
+    if (iss) setSelectedFlight(null);
+  }, []);
+
+  const handleBackgroundClick = useCallback(() => {
+    setSelectedFlight(null);
+    setSelectedInfo(null);
+  }, []);
 
   // Fetch route + aircraft metadata when a different flight is selected.
   useEffect(() => {
@@ -106,6 +143,38 @@ export default function Globe3DDemo() {
   useEffect(() => {
     if (!flightsAvailable) setSelectedFlight(null);
   }, [flightsAvailable]);
+
+  // Wikipedia image + blurb for the selected ship type / satellite / ISS.
+  const wikiTopic = useMemo(() => {
+    if (!selectedInfo) return null;
+    if (selectedInfo.kind === "iss") return "International Space Station";
+    if (selectedInfo.kind === "sat") return selectedInfo.sat.wikiTopic;
+    return shipCategory(selectedInfo.ship.type).wiki;
+  }, [selectedInfo]);
+
+  useEffect(() => {
+    if (!wikiTopic) {
+      setWiki(null);
+      setWikiLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setWikiLoading(true);
+    setWiki(null);
+    fetchWikiInfo(wikiTopic)
+      .then((w) => {
+        if (!cancelled) {
+          setWiki(w);
+          setWikiLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setWikiLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [wikiTopic]);
 
   return (
     <div className="relative h-full w-full">
@@ -172,6 +241,7 @@ export default function Globe3DDemo() {
 
       <Globe3D
         className="h-full"
+        onPointerMissed={handleBackgroundClick}
         config={{
           atmosphereColor: "#4da6ff",
           atmosphereIntensity: 20,
@@ -182,7 +252,12 @@ export default function Globe3DDemo() {
           maxDistance: 14,
         }}
       >
-        {layers.iss && <IssLayer />}
+        {layers.iss && (
+          <IssLayer
+            onSelect={handleSelectIss}
+            selected={selectedInfo?.kind === "iss"}
+          />
+        )}
         {layers.flights && flightsAvailable && (
           <FlightsLayer
             flights={flights}
@@ -191,8 +266,24 @@ export default function Globe3DDemo() {
             route={route}
           />
         )}
-        {layers.ships && shipsAvailable && <ShipsLayer ships={ships} />}
-        {layers.satellites && <SatellitesLayer onStats={handleSatStats} />}
+        {layers.ships && shipsAvailable && (
+          <ShipsLayer
+            ships={ships}
+            onSelect={handleSelectShip}
+            selectedMmsi={
+              selectedInfo?.kind === "ship" ? selectedInfo.ship.mmsi : null
+            }
+          />
+        )}
+        {layers.satellites && (
+          <SatellitesLayer
+            onStats={handleSatStats}
+            onSelect={handleSelectSat}
+            selectedSatId={
+              selectedInfo?.kind === "sat" ? selectedInfo.sat.id : null
+            }
+          />
+        )}
       </Globe3D>
 
       {layers.flights && flightsAvailable && selectedFlight && (
@@ -201,6 +292,15 @@ export default function Globe3DDemo() {
           info={flightInfo}
           loading={infoLoading}
           onClose={() => setSelectedFlight(null)}
+        />
+      )}
+
+      {selectedInfo && (
+        <InfoDetailPanel
+          info={selectedInfo}
+          wiki={wiki}
+          wikiLoading={wikiLoading}
+          onClose={() => setSelectedInfo(null)}
         />
       )}
     </div>
@@ -320,6 +420,180 @@ function FlightDetailPanel({
           <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
         </span>
         Frei drehbar – dem Flugweg folgen
+      </div>
+    </div>
+  );
+}
+
+type PanelAccent = "cyan" | "violet" | "sky";
+
+const PANEL_ACCENT: Record<PanelAccent, string> = {
+  cyan: "border-cyan-400/30",
+  violet: "border-violet-400/30",
+  sky: "border-sky-400/30",
+};
+const PANEL_CHIP: Record<PanelAccent, string> = {
+  cyan: "bg-cyan-400/20 text-cyan-200",
+  violet: "bg-violet-400/20 text-violet-200",
+  sky: "bg-sky-400/20 text-sky-200",
+};
+const PANEL_DOT: Record<PanelAccent, string> = {
+  cyan: "bg-cyan-400",
+  violet: "bg-violet-400",
+  sky: "bg-sky-400",
+};
+
+function panelMeta(info: SelInfo): {
+  emoji: string;
+  accent: PanelAccent;
+  title: string;
+  subtitle: string;
+  note: string;
+  rows: [string, string][];
+} {
+  if (info.kind === "iss") {
+    const d = info.iss;
+    return {
+      emoji: "🛰️",
+      accent: "sky",
+      title: "ISS",
+      subtitle: "Internationale Raumstation",
+      note: "Live-Position · ~16 Erdumrundungen/Tag",
+      rows: [
+        ["Höhe", `${Math.round(d.altitude).toLocaleString("de-DE")} km`],
+        ["Tempo", `${Math.round(d.velocity).toLocaleString("de-DE")} km/h`],
+        ["Position", `${d.lat.toFixed(2)}°, ${d.lng.toFixed(2)}°`],
+        ["Umlaufzeit", "~92 Min"],
+      ],
+    };
+  }
+  if (info.kind === "sat") {
+    const s = info.sat;
+    return {
+      emoji: "📡",
+      accent: "violet",
+      title: s.name,
+      subtitle: s.purpose,
+      note: "Linie = Bahn der letzten 90 Minuten",
+      rows: [
+        ["Höhe", `${Math.round(s.altKm).toLocaleString("de-DE")} km`],
+        ["Tempo", `${Math.round(s.speedKmh).toLocaleString("de-DE")} km/h`],
+        ["Umlaufzeit", `${s.periodMin.toFixed(0)} Min`],
+        ["Position", `${s.lat.toFixed(1)}°, ${s.lng.toFixed(1)}°`],
+      ],
+    };
+  }
+  const sh = info.ship;
+  const cat = shipCategory(sh.type);
+  const rows: [string, string][] = [
+    ["Flagge", shipFlag(sh.mmsi) ?? "—"],
+    ["Typ", cat.name],
+    [
+      "Tempo",
+      sh.speedKn < 0.5 ? "vor Anker" : `${Math.round(sh.speedKn * 1.852)} km/h`,
+    ],
+    ["Ziel", sh.destination || "—"],
+  ];
+  if (sh.eta) rows.push(["ETA (UTC)", sh.eta]);
+  if (sh.lengthM) rows.push(["Maße", `${sh.lengthM} × ${sh.beamM ?? "?"} m`]);
+  if (sh.draughtM) rows.push(["Tiefgang", `${sh.draughtM.toFixed(1)} m`]);
+  if (sh.callSign) rows.push(["Rufzeichen", sh.callSign]);
+  if (sh.imo) rows.push(["IMO", String(sh.imo)]);
+  rows.push(["MMSI", String(sh.mmsi)]);
+  return {
+    emoji: "🚢",
+    accent: "cyan",
+    title: sh.name || `MMSI ${sh.mmsi}`,
+    subtitle: cat.name,
+    note: "Live-Position",
+    rows,
+  };
+}
+
+function InfoDetailPanel({
+  info,
+  wiki,
+  wikiLoading,
+  onClose,
+}: {
+  info: SelInfo;
+  wiki: WikiInfo | null;
+  wikiLoading: boolean;
+  onClose: () => void;
+}) {
+  const m = panelMeta(info);
+  return (
+    <div
+      className={`absolute bottom-3 left-3 z-20 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border ${PANEL_ACCENT[m.accent]} bg-neutral-900/80 p-3.5 shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-4`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${PANEL_CHIP[m.accent]}`}
+          >
+            {m.emoji}
+          </span>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold leading-tight text-white">
+              {m.title}
+            </div>
+            <div className="truncate text-[11px] leading-tight text-neutral-400">
+              {m.subtitle}
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="-mr-1 -mt-1 shrink-0 rounded-lg px-1.5 py-0.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+          aria-label="Schließen"
+        >
+          ✕
+        </button>
+      </div>
+
+      {wiki?.image ? (
+        <img
+          src={wiki.image}
+          alt={m.title}
+          loading="lazy"
+          className="mt-3 h-28 w-full rounded-lg object-cover"
+        />
+      ) : (
+        <div className="mt-3 flex h-28 w-full items-center justify-center rounded-lg bg-white/5 text-3xl">
+          {wikiLoading ? (
+            <span className="text-xs text-neutral-500">lädt…</span>
+          ) : (
+            m.emoji
+          )}
+        </div>
+      )}
+
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+        {m.rows.map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-neutral-500">{label}</dt>
+            <dd className="font-medium text-neutral-200">{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {wiki?.extract && (
+        <p className="mt-3 line-clamp-4 text-[11px] leading-snug text-neutral-400">
+          {wiki.extract}
+        </p>
+      )}
+
+      <div className="mt-3 flex items-center gap-1.5 text-[11px] text-neutral-400">
+        <span className="relative flex h-2 w-2">
+          <span
+            className={`absolute inline-flex h-full w-full animate-ping rounded-full ${PANEL_DOT[m.accent]} opacity-75`}
+          />
+          <span
+            className={`relative inline-flex h-2 w-2 rounded-full ${PANEL_DOT[m.accent]}`}
+          />
+        </span>
+        {m.note}
       </div>
     </div>
   );

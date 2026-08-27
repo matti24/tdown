@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { Html, Line } from "@react-three/drei";
 import { gstime } from "satellite.js";
 import * as THREE from "three";
 import { usePolling } from "@/hooks/use-live-data";
@@ -41,7 +41,29 @@ export interface SatelliteStats {
 
 interface SatellitesLayerProps {
   onStats?: (stats: SatelliteStats | null) => void;
+  onSelect?: (sat: SatSelection | null) => void;
+  selectedSatId?: string | null;
 }
+
+export interface SatSelection {
+  id: string;
+  name: string;
+  constellation: string;
+  purpose: string;
+  color: string;
+  wikiTopic: string;
+  altKm: number;
+  speedKmh: number;
+  periodMin: number;
+  lat: number;
+  lng: number;
+}
+
+const SAT_WIKI: Record<string, string> = {
+  starlink: "Starlink",
+  oneweb: "OneWeb",
+  gps: "Global Positioning System",
+};
 
 interface HoveredSatellite {
   name: string;
@@ -62,14 +84,26 @@ function altitudeFactor(altKm: number): number {
  * Celestrak and are propagated with SGP4 on every animation tick, so each
  * point shows a real, current position and the swarm drifts as it orbits.
  */
-export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
+export function SatellitesLayer({
+  onStats,
+  onSelect,
+  selectedSatId,
+}: SatellitesLayerProps) {
   const radius = useGlobeRadius();
   const { data } = usePolling(fetchSatellites, TLE_REFRESH_MS, true);
   const accumulator = useRef(UPDATE_INTERVAL);
   const onStatsRef = useRef(onStats);
   onStatsRef.current = onStats;
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
   const raycaster = useThree((s) => s.raycaster);
+  const ringRef = useRef<THREE.Mesh>(null);
+  const selectedIndexRef = useRef(-1);
   const [hovered, setHovered] = useState<HoveredSatellite | null>(null);
+  const [track, setTrack] = useState<{
+    points: THREE.Vector3[];
+    color: string;
+  } | null>(null);
 
   const maxSats = useMemo(
     () =>
@@ -149,16 +183,71 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
     };
   }, [hovered]);
 
-  useFrame((_, delta) => {
+  // Recompute the selected satellite's last-90-minutes ground track.
+  useEffect(() => {
+    if (!selectedSatId) {
+      selectedIndexRef.current = -1;
+      setTrack(null);
+      return;
+    }
+    const idx = working.findIndex(
+      (r) => String(r.satrec.satnum) === selectedSatId,
+    );
+    selectedIndexRef.current = idx;
+    if (idx < 0) {
+      setTrack(null);
+      return;
+    }
+    const rec = working[idx];
+    const color = META_BY_KEY.get(rec.constellation)?.color ?? "#ffffff";
+    const compute = () => {
+      const pts: THREE.Vector3[] = [];
+      const now = Date.now();
+      for (let s = 90 * 60; s >= 0; s -= 90) {
+        const d = new Date(now - s * 1000);
+        const st = propagateSatellite(rec.satrec, d, gstime(d));
+        if (st) {
+          pts.push(
+            latLngToVector3(st.lat, st.lng, radius * altitudeFactor(st.altKm)),
+          );
+        }
+      }
+      setTrack(pts.length >= 2 ? { points: pts, color } : null);
+    };
+    compute();
+    const id = window.setInterval(compute, 5000);
+    return () => clearInterval(id);
+  }, [selectedSatId, working, radius]);
+
+  useFrame((state, delta) => {
     if (working.length === 0) return;
+    const attr = geometry.getAttribute("position") as THREE.BufferAttribute;
+    const array = attr.array as Float32Array;
+
+    // Highlight ring follows the selected satellite every frame.
+    const ring = ringRef.current;
+    const idx = selectedIndexRef.current;
+    if (ring) {
+      if (idx >= 0 && idx * 3 + 2 < array.length) {
+        ring.visible = true;
+        ring.position.set(
+          array[idx * 3],
+          array[idx * 3 + 1],
+          array[idx * 3 + 2],
+        );
+        ring.lookAt(ring.position.clone().multiplyScalar(2));
+        ring.scale.setScalar(1 + 0.3 * Math.sin(state.clock.elapsedTime * 4));
+      } else {
+        ring.visible = false;
+      }
+    }
+
     accumulator.current += delta;
     if (accumulator.current < UPDATE_INTERVAL) return;
     accumulator.current = 0;
 
     const now = new Date();
     const gmst = gstime(now);
-    const attr = geometry.getAttribute("position") as THREE.BufferAttribute;
-    const array = attr.array as Float32Array;
     let speedSum = 0;
     let visible = 0;
 
@@ -215,6 +304,31 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
 
   const hideTooltip = () => setHovered(null);
 
+  const selectSat = (event: ThreeEvent<MouseEvent>) => {
+    const index = event.index;
+    if (index == null) return;
+    event.stopPropagation();
+    const rec = working[index];
+    if (!rec) return;
+    const now = new Date();
+    const st = propagateSatellite(rec.satrec, now, gstime(now));
+    if (!st) return;
+    const meta = META_BY_KEY.get(rec.constellation);
+    onSelectRef.current?.({
+      id: String(rec.satrec.satnum),
+      name: rec.name,
+      constellation: rec.constellation,
+      purpose: meta?.purpose ?? "",
+      color: meta?.color ?? "#ffffff",
+      wikiTopic: SAT_WIKI[rec.constellation] ?? "Satellite",
+      altKm: st.altKm,
+      speedKmh: st.speedKmh,
+      periodMin: (2 * Math.PI) / rec.satrec.no,
+      lat: st.lat,
+      lng: st.lng,
+    });
+  };
+
   return (
     <group>
       <points
@@ -222,7 +336,7 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
         frustumCulled={false}
         onPointerMove={isTouch ? undefined : showTooltip}
         onPointerOut={isTouch ? undefined : hideTooltip}
-        onClick={showTooltip}
+        onClick={selectSat}
         onPointerMissed={hideTooltip}
       >
         <pointsMaterial
@@ -235,6 +349,27 @@ export function SatellitesLayer({ onStats }: SatellitesLayerProps) {
           depthWrite={false}
         />
       </points>
+
+      {track && (
+        <Line
+          points={track.points}
+          color={track.color}
+          lineWidth={2.6}
+          transparent
+          opacity={0.85}
+        />
+      )}
+      <mesh ref={ringRef} visible={false}>
+        <ringGeometry args={[0.02, 0.03, 28]} />
+        <meshBasicMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.9}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
 
       {hovered && (
         <Html

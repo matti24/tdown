@@ -75,6 +75,8 @@ interface Globe3DProps {
   onMarkerHover?: (marker: GlobeMarker | null) => void;
   /** Additional 3D layers rendered inside the rotating group */
   children?: React.ReactNode;
+  /** Fires when a click misses every interactive object (clears selections). */
+  onPointerMissed?: () => void;
 }
 
 // ============================================================================
@@ -522,6 +524,7 @@ export function Globe3D({
   onMarkerClick,
   onMarkerHover,
   children,
+  onPointerMissed,
 }: Globe3DProps) {
   const mergedConfig = useMemo(
     () => ({ ...defaultConfig, ...config }),
@@ -531,6 +534,7 @@ export function Globe3D({
   return (
     <div className={cn("relative h-[500px] w-full", className)}>
       <Canvas
+        onPointerMissed={onPointerMissed}
         gl={{
           antialias: true,
           alpha: true,

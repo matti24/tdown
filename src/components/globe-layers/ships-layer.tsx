@@ -17,6 +17,8 @@ const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
 
 interface ShipsLayerProps {
   ships: Ship[];
+  onSelect?: (ship: Ship | null) => void;
+  selectedMmsi?: number | null;
 }
 
 interface HoveredShip {
@@ -28,12 +30,15 @@ interface HoveredShip {
  * Live vessels (AIS) as course-oriented boat icons lying flat on the sea
  * (InstancedMesh), coloured by ship category, with a hover/tap tooltip.
  */
-export function ShipsLayer({ ships }: ShipsLayerProps) {
+export function ShipsLayer({ ships, onSelect, selectedMmsi }: ShipsLayerProps) {
   const radius = useGlobeRadius();
   const camera = useThree((s) => s.camera);
   const meshRef = useRef<THREE.InstancedMesh>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState<HoveredShip | null>(null);
   const scaleUniform = useRef({ value: 1 });
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
 
   const isTouch = useMemo(
     () =>
@@ -114,7 +119,23 @@ export function ShipsLayer({ ships }: ShipsLayerProps) {
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     mesh.computeBoundingSphere();
-  }, [ships, radius]);
+
+    const ring = ringRef.current;
+    if (ring) {
+      const sel =
+        selectedMmsi != null
+          ? ships.find((s) => s.mmsi === selectedMmsi)
+          : undefined;
+      if (sel) {
+        const p = latLngToVector3(sel.lat, sel.lng, radius * SEA_LIFT);
+        ring.position.copy(p);
+        ring.lookAt(p.clone().multiplyScalar(2));
+        ring.visible = true;
+      } else {
+        ring.visible = false;
+      }
+    }
+  }, [ships, radius, selectedMmsi]);
 
   useEffect(() => {
     document.body.style.cursor = hovered ? "pointer" : "";
@@ -123,12 +144,16 @@ export function ShipsLayer({ ships }: ShipsLayerProps) {
     };
   }, [hovered]);
 
-  useFrame(() => {
+  useFrame((state) => {
     const dist = camera.position.length();
     scaleUniform.current.value = Math.min(
       SCALE_MAX,
       Math.max(SCALE_MIN, dist / SCALE_REF),
     );
+    const ring = ringRef.current;
+    if (ring?.visible) {
+      ring.scale.setScalar(1 + 0.25 * Math.sin(state.clock.elapsedTime * 4));
+    }
   });
 
   if (ships.length === 0) return null;
@@ -166,6 +191,16 @@ export function ShipsLayer({ ships }: ShipsLayerProps) {
 
   const hideTooltip = () => setHovered(null);
 
+  const selectShip = (event: ThreeEvent<MouseEvent>) => {
+    const id = event.instanceId;
+    if (id == null) return;
+    const ship = ships[id];
+    if (!ship) return;
+    if (!visibleHit(event.point)) return;
+    event.stopPropagation();
+    onSelectRef.current?.(ship);
+  };
+
   return (
     <group>
       <instancedMesh
@@ -174,9 +209,20 @@ export function ShipsLayer({ ships }: ShipsLayerProps) {
         frustumCulled={false}
         onPointerMove={isTouch ? undefined : showTooltip}
         onPointerOut={isTouch ? undefined : hideTooltip}
-        onClick={showTooltip}
+        onClick={selectShip}
         onPointerMissed={hideTooltip}
       />
+      <mesh ref={ringRef} visible={false}>
+        <ringGeometry args={[0.016, 0.024, 28]} />
+        <meshBasicMaterial
+          color="#22d3ee"
+          transparent
+          opacity={0.9}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
 
       {hovered && (
         <Html
