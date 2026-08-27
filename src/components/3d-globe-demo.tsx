@@ -16,6 +16,7 @@ import {
   hasAisKey,
   shipCategory,
   shipFlag,
+  shipWikiTopic,
   type Ship,
 } from "@/lib/ships";
 import { type IssPosition } from "@/lib/live-data";
@@ -149,7 +150,7 @@ export default function Globe3DDemo() {
     if (!selectedInfo) return null;
     if (selectedInfo.kind === "iss") return "International Space Station";
     if (selectedInfo.kind === "sat") return selectedInfo.sat.wikiTopic;
-    return shipCategory(selectedInfo.ship.type).wiki;
+    return shipWikiTopic(selectedInfo.ship);
   }, [selectedInfo]);
 
   useEffect(() => {
@@ -505,7 +506,10 @@ function panelMeta(info: SelInfo): {
     accent: "cyan",
     title: sh.name || `MMSI ${sh.mmsi}`,
     subtitle: cat.name,
-    note: "Live-Position",
+    note:
+      sh.speedKn < 0.5
+        ? "Live-Position · vor Anker"
+        : "Linie = Fahrtrichtung (woher · wohin)",
     rows,
   };
 }

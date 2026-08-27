@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { Html, Line } from "@react-three/drei";
 import * as THREE from "three";
 import { latLngToVector3, useGlobeRadius } from "@/lib/globe-utils";
 import { shipTexture } from "@/lib/point-textures";
-import { shipCategory, type Ship } from "@/lib/ships";
+import { shipCategory, spreadShips, type Ship } from "@/lib/ships";
 
 const SHIP_SIZE = 0.032;
 const MAX_SHIPS = 20000;
@@ -14,6 +14,53 @@ const SCALE_REF = 6;
 const SCALE_MIN = 0.45;
 const SCALE_MAX = 2.4;
 const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+// A course line drawn through the selected ship: where it came from (behind)
+// and where it's heading (ahead), dead-reckoned from its course over ground.
+const LINE_LIFT = 1.0045;
+const BACK_KM = 750;
+const AHEAD_KM = 420;
+
+/** Great-circle destination point from (lat,lng) along a bearing (deg). */
+function destPoint(
+  lat: number,
+  lng: number,
+  bearingDeg: number,
+  distKm: number,
+) {
+  const d = distKm / 6371;
+  const br = (bearingDeg * Math.PI) / 180;
+  const p1 = (lat * Math.PI) / 180;
+  const l1 = (lng * Math.PI) / 180;
+  const sinP2 =
+    Math.sin(p1) * Math.cos(d) + Math.cos(p1) * Math.sin(d) * Math.cos(br);
+  const p2 = Math.asin(Math.max(-1, Math.min(1, sinP2)));
+  const l2 =
+    l1 +
+    Math.atan2(
+      Math.sin(br) * Math.sin(d) * Math.cos(p1),
+      Math.cos(d) - Math.sin(p1) * sinP2,
+    );
+  return {
+    lat: (p2 * 180) / Math.PI,
+    lng: (((l2 * 180) / Math.PI + 540) % 360) - 180,
+  };
+}
+
+/** Sample a great-circle arc from a ship outwards along a bearing. */
+function courseArc(
+  lat: number,
+  lng: number,
+  bearingDeg: number,
+  distKm: number,
+  radius: number,
+) {
+  const pts: THREE.Vector3[] = [];
+  for (let i = 0; i <= 24; i++) {
+    const p = destPoint(lat, lng, bearingDeg, (distKm * i) / 24);
+    pts.push(latLngToVector3(p.lat, p.lng, radius * LINE_LIFT));
+  }
+  return pts;
+}
 
 interface ShipsLayerProps {
   ships: Ship[];
@@ -39,6 +86,24 @@ export function ShipsLayer({ ships, onSelect, selectedMmsi }: ShipsLayerProps) {
   const scaleUniform = useRef({ value: 1 });
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+
+  // Even out density (busy coasts crowd out the rest of the world and lag the
+  // render); the selected vessel is always kept so its ring/line stay put.
+  const renderShips = useMemo(
+    () => spreadShips(ships, selectedMmsi ?? null),
+    [ships, selectedMmsi],
+  );
+
+  // Dead-reckoned course line for the selected, moving vessel.
+  const courseLine = useMemo(() => {
+    if (selectedMmsi == null) return null;
+    const s = ships.find((x) => x.mmsi === selectedMmsi);
+    if (!s || s.speedKn < 0.5) return null;
+    return {
+      back: courseArc(s.lat, s.lng, s.courseDeg + 180, BACK_KM, radius),
+      ahead: courseArc(s.lat, s.lng, s.courseDeg, AHEAD_KM, radius),
+    };
+  }, [ships, selectedMmsi, radius]);
 
   const isTouch = useMemo(
     () =>
@@ -90,10 +155,10 @@ export function ShipsLayer({ ships, onSelect, selectedMmsi }: ShipsLayerProps) {
     const xAxis = new THREE.Vector3();
     const matrix = new THREE.Matrix4();
     const color = new THREE.Color();
-    const count = Math.min(ships.length, MAX_SHIPS);
+    const count = Math.min(renderShips.length, MAX_SHIPS);
 
     for (let i = 0; i < count; i++) {
-      const s = ships[i];
+      const s = renderShips[i];
       pos.copy(latLngToVector3(s.lat, s.lng, radius * SEA_LIFT));
       normal.copy(pos).normalize();
       north.copy(WORLD_UP).addScaledVector(normal, -WORLD_UP.dot(normal));
@@ -124,7 +189,7 @@ export function ShipsLayer({ ships, onSelect, selectedMmsi }: ShipsLayerProps) {
     if (ring) {
       const sel =
         selectedMmsi != null
-          ? ships.find((s) => s.mmsi === selectedMmsi)
+          ? renderShips.find((s) => s.mmsi === selectedMmsi)
           : undefined;
       if (sel) {
         const p = latLngToVector3(sel.lat, sel.lng, radius * SEA_LIFT);
@@ -135,7 +200,7 @@ export function ShipsLayer({ ships, onSelect, selectedMmsi }: ShipsLayerProps) {
         ring.visible = false;
       }
     }
-  }, [ships, radius, selectedMmsi]);
+  }, [renderShips, radius, selectedMmsi]);
 
   useEffect(() => {
     document.body.style.cursor = hovered ? "pointer" : "";
@@ -156,7 +221,7 @@ export function ShipsLayer({ ships, onSelect, selectedMmsi }: ShipsLayerProps) {
     }
   });
 
-  if (ships.length === 0) return null;
+  if (renderShips.length === 0) return null;
 
   // Ignore hits on vessels hidden behind the globe.
   const visibleHit = (point: THREE.Vector3) => {
@@ -176,7 +241,7 @@ export function ShipsLayer({ ships, onSelect, selectedMmsi }: ShipsLayerProps) {
   const showTooltip = (event: ThreeEvent<PointerEvent | MouseEvent>) => {
     const id = event.instanceId;
     if (id == null) return;
-    const ship = ships[id];
+    const ship = renderShips[id];
     if (!ship) return;
     if (!visibleHit(event.point)) {
       setHovered(null);
@@ -194,7 +259,7 @@ export function ShipsLayer({ ships, onSelect, selectedMmsi }: ShipsLayerProps) {
   const selectShip = (event: ThreeEvent<MouseEvent>) => {
     const id = event.instanceId;
     if (id == null) return;
-    const ship = ships[id];
+    const ship = renderShips[id];
     if (!ship) return;
     if (!visibleHit(event.point)) return;
     event.stopPropagation();
@@ -223,6 +288,27 @@ export function ShipsLayer({ ships, onSelect, selectedMmsi }: ShipsLayerProps) {
           toneMapped={false}
         />
       </mesh>
+
+      {courseLine && (
+        <>
+          <Line
+            points={courseLine.back}
+            color="#f59e0b"
+            lineWidth={2.4}
+            transparent
+            opacity={0.9}
+          />
+          <Line
+            points={courseLine.ahead}
+            color="#22d3ee"
+            lineWidth={2}
+            dashed
+            dashScale={40}
+            transparent
+            opacity={0.85}
+          />
+        </>
+      )}
 
       {hovered && (
         <Html

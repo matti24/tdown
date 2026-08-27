@@ -252,26 +252,29 @@ export function useAisStream(enabled: boolean): {
   return { ships, connected };
 }
 
+// Each category carries a small pool of Wikipedia topics (all verified to have
+// a representative photo) so neighbouring vessels of the same kind don't all
+// show the identical image.
 const CATEGORIES: {
   name: string;
   color: [number, number, number];
-  wiki: string;
+  pool: string[];
 }[] = [
-  { name: "Other", color: [0.75, 0.8, 0.85], wiki: "Ship" },
-  { name: "Fishing", color: [0.4, 0.9, 0.5], wiki: "Fishing vessel" },
-  { name: "Tug / Special", color: [0.85, 0.82, 0.5], wiki: "Tugboat" },
-  { name: "Sailing / Pleasure", color: [0.55, 0.9, 0.9], wiki: "Yacht" },
-  { name: "High-speed craft", color: [0.85, 0.5, 1], wiki: "High-speed craft" },
-  { name: "Passenger", color: [0.35, 0.7, 1], wiki: "Cruise ship" },
-  { name: "Cargo", color: [1, 0.72, 0.25], wiki: "Cargo ship" },
-  { name: "Tanker", color: [1, 0.4, 0.35], wiki: "Oil tanker" },
+  { name: "Other", color: [0.75, 0.8, 0.85], pool: ["Ship", "Merchant ship", "Boat"] },
+  { name: "Fishing", color: [0.4, 0.9, 0.5], pool: ["Fishing vessel", "Factory ship"] },
+  { name: "Tug / Special", color: [0.85, 0.82, 0.5], pool: ["Tugboat", "Pilot boat"] },
+  { name: "Sailing / Pleasure", color: [0.55, 0.9, 0.9], pool: ["Yacht", "Sailing yacht", "Sailing ship"] },
+  { name: "High-speed craft", color: [0.85, 0.5, 1], pool: ["High-speed craft", "Catamaran"] },
+  { name: "Passenger", color: [0.35, 0.7, 1], pool: ["Cruise ship", "Ferry", "Passenger ship"] },
+  { name: "Cargo", color: [1, 0.72, 0.25], pool: ["Container ship", "Cargo ship", "Bulk carrier", "Panamax"] },
+  { name: "Tanker", color: [1, 0.4, 0.35], pool: ["Oil tanker", "Chemical tanker", "LNG carrier"] },
 ];
 
-/** Map an AIS ship-type code to a readable category (name + colour + wiki). */
+/** Map an AIS ship-type code to a readable category (name + colour + image pool). */
 export function shipCategory(type: number): {
   name: string;
   color: [number, number, number];
-  wiki: string;
+  pool: string[];
 } {
   if (type === 30) return CATEGORIES[1];
   if (type >= 31 && type <= 35) return CATEGORIES[2];
@@ -281,6 +284,16 @@ export function shipCategory(type: number): {
   if (type >= 70 && type <= 79) return CATEGORIES[6];
   if (type >= 80 && type <= 89) return CATEGORIES[7];
   return CATEGORIES[0];
+}
+
+/**
+ * Wikipedia topic for a vessel's image + blurb, chosen from its category pool
+ * by MMSI so a cluster of same-type ships shows varied photos (deterministic,
+ * so the same ship always maps to the same image).
+ */
+export function shipWikiTopic(ship: Ship): string {
+  const pool = shipCategory(ship.type).pool;
+  return pool[Math.abs(ship.mmsi) % pool.length];
 }
 
 // ITU Maritime Identification Digits (first 3 MMSI digits) -> flag state.
@@ -336,4 +349,37 @@ const MID_COUNTRY: Record<number, string> = {
 /** Flag state derived from an MMSI's Maritime Identification Digits. */
 export function shipFlag(mmsi: number): string | undefined {
   return MID_COUNTRY[Math.floor(mmsi / 1_000_000)];
+}
+
+// Thin out dense regions (busy coasts like Europe crowd out the rest of the
+// world and lag the render). Vessels are bucketed into a lat/lng grid and only
+// the first few per cell are kept — chosen by MMSI so the visible set stays
+// stable across updates. Sparse regions still show every ship.
+const CELL_DEG = 2.5;
+const PER_CELL = 3;
+
+/** Spatially downsample vessels to even out density; always keeps `keep`. */
+export function spreadShips(ships: Ship[], keep?: number | null): Ship[] {
+  if (ships.length === 0) return ships;
+  const cols = Math.ceil(360 / CELL_DEG);
+  const cells = new Map<number, Ship[]>();
+  for (const s of ships) {
+    const cx = Math.min(cols - 1, Math.floor((s.lng + 180) / CELL_DEG));
+    const cy = Math.floor((s.lat + 90) / CELL_DEG);
+    const key = cy * cols + cx;
+    let arr = cells.get(key);
+    if (!arr) cells.set(key, (arr = []));
+    arr.push(s);
+  }
+  const out: Ship[] = [];
+  for (const arr of cells.values()) {
+    if (arr.length > PER_CELL) arr.sort((a, b) => a.mmsi - b.mmsi);
+    const n = Math.min(PER_CELL, arr.length);
+    for (let i = 0; i < n; i++) out.push(arr[i]);
+  }
+  if (keep != null && !out.some((s) => s.mmsi === keep)) {
+    const sel = ships.find((s) => s.mmsi === keep);
+    if (sel) out.push(sel);
+  }
+  return out;
 }

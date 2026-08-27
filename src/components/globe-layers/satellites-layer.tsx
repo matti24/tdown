@@ -59,11 +59,21 @@ export interface SatSelection {
   lng: number;
 }
 
-const SAT_WIKI: Record<string, string> = {
-  starlink: "Starlink",
-  oneweb: "OneWeb",
-  gps: "Global Positioning System",
+// Real-hardware satellite photos (each verified to exist on Wikipedia), pooled
+// per constellation and picked by NORAD id for variety. Starlink deliberately
+// avoids its own article, whose lead image is just the round company logo.
+const SAT_WIKI_POOL: Record<string, string[]> = {
+  starlink: ["Communications satellite", "Satellite", "Small satellite", "CubeSat"],
+  oneweb: ["OneWeb", "Communications satellite", "Small satellite"],
+  gps: ["Global Positioning System", "GPS Block IIF"],
 };
+const SAT_WIKI_FALLBACK = ["Satellite", "Communications satellite"];
+
+function satWikiTopic(constellation: string, satnum: number | string): string {
+  const pool = SAT_WIKI_POOL[constellation] ?? SAT_WIKI_FALLBACK;
+  const n = Number(satnum) || 0;
+  return pool[n % pool.length];
+}
 
 interface HoveredSatellite {
   name: string;
@@ -320,7 +330,7 @@ export function SatellitesLayer({
       constellation: rec.constellation,
       purpose: meta?.purpose ?? "",
       color: meta?.color ?? "#ffffff",
-      wikiTopic: SAT_WIKI[rec.constellation] ?? "Satellite",
+      wikiTopic: satWikiTopic(rec.constellation, rec.satrec.satnum),
       altKm: st.altKm,
       speedKmh: st.speedKmh,
       periodMin: (2 * Math.PI) / rec.satrec.no,
