@@ -7,7 +7,7 @@ import { shipTexture } from "@/lib/point-textures";
 import { shipCategory, type Ship } from "@/lib/ships";
 
 const SHIP_SIZE = 0.032;
-const MAX_SHIPS = 6000;
+const MAX_SHIPS = 20000;
 const SEA_LIFT = 1.003;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const SCALE_REF = 6;

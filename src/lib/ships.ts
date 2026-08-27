@@ -6,8 +6,11 @@
 import { useEffect, useRef, useState } from "react";
 
 const AIS_WS = "wss://stream.aisstream.io/v0/stream";
-const MAX_SHIPS = 6000;
-const FLUSH_MS = 2000;
+const MAX_SHIPS = 20000;
+const FLUSH_MS = 3000;
+// Drop vessels not heard from in this long, so all regions persist rather than
+// being crowded out by high-frequency coastal traffic.
+const SHIP_TTL_MS = 20 * 60_000;
 // AISStream pushes each message as a binary frame, decoded to JSON text.
 const decoder = new TextDecoder();
 
@@ -23,6 +26,8 @@ export interface Ship {
   /** AIS ship type code (0–99). */
   type: number;
   destination?: string;
+  /** Internal: last-seen timestamp (ms). */
+  t?: number;
 }
 
 // >>> HIER deinen kostenlosen aisstream.io API-Key eintragen, damit die Schiffe
@@ -155,6 +160,7 @@ export function useAisStream(enabled: boolean): {
             name: prev?.name ?? (meta.ShipName ?? "").trim(),
             type: prev?.type ?? 0,
             destination: prev?.destination,
+            t: Date.now(),
           });
         } else if (msg.MessageType === "ShipStaticData") {
           const sd = msg.Message?.ShipStaticData ?? {};
@@ -165,6 +171,7 @@ export function useAisStream(enabled: boolean): {
             prev.name = name || prev.name;
             prev.type = type;
             prev.destination = destination;
+            prev.t = Date.now();
           }
         }
       };
@@ -182,6 +189,12 @@ export function useAisStream(enabled: boolean): {
     connect();
 
     const flush = window.setInterval(() => {
+      const now = Date.now();
+      for (const [mmsi, s] of store.current) {
+        if (s.t !== undefined && now - s.t > SHIP_TTL_MS) {
+          store.current.delete(mmsi);
+        }
+      }
       while (store.current.size > MAX_SHIPS) {
         const oldest = store.current.keys().next().value as number | undefined;
         if (oldest === undefined) break;
