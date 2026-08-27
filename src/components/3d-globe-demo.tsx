@@ -21,6 +21,7 @@ import {
 } from "@/lib/ships";
 import { type IssPosition } from "@/lib/live-data";
 import { fetchWikiInfo, type WikiInfo } from "@/lib/wiki";
+import { fetchShipPhoto, type ShipPhoto } from "@/lib/ship-photo";
 import { usePolling } from "@/hooks/use-live-data";
 
 const FLIGHTS_REFRESH_MS = 30_000;
@@ -44,6 +45,8 @@ export default function Globe3DDemo() {
   const [selectedInfo, setSelectedInfo] = useState<SelInfo | null>(null);
   const [wiki, setWiki] = useState<WikiInfo | null>(null);
   const [wikiLoading, setWikiLoading] = useState(false);
+  const [shipPhoto, setShipPhoto] = useState<ShipPhoto | null>(null);
+  const [shipPhotoLoading, setShipPhotoLoading] = useState(false);
 
   // One live-flights poll drives both the layer and the "is it available?" gate.
   const { data: flightsData, error: flightsError } = usePolling(
@@ -177,6 +180,34 @@ export default function Globe3DDemo() {
     };
   }, [wikiTopic]);
 
+  // A photo of the *specific* selected vessel (Wikidata by IMO / Commons by
+  // name); the panel falls back to a representative type image when none is
+  // verified, so we never show a confidently-wrong photo.
+  useEffect(() => {
+    if (!selectedInfo || selectedInfo.kind !== "ship") {
+      setShipPhoto(null);
+      setShipPhotoLoading(false);
+      return;
+    }
+    const sh = selectedInfo.ship;
+    let cancelled = false;
+    setShipPhotoLoading(true);
+    setShipPhoto(null);
+    fetchShipPhoto({ mmsi: sh.mmsi, imo: sh.imo, name: sh.name })
+      .then((p) => {
+        if (!cancelled) {
+          setShipPhoto(p);
+          setShipPhotoLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setShipPhotoLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedInfo]);
+
   return (
     <div className="relative h-full w-full">
       <GlobeControls
@@ -301,6 +332,8 @@ export default function Globe3DDemo() {
           info={selectedInfo}
           wiki={wiki}
           wikiLoading={wikiLoading}
+          photo={shipPhoto}
+          photoLoading={shipPhotoLoading}
           onClose={() => setSelectedInfo(null)}
         />
       )}
@@ -518,14 +551,26 @@ function InfoDetailPanel({
   info,
   wiki,
   wikiLoading,
+  photo,
+  photoLoading,
   onClose,
 }: {
   info: SelInfo;
   wiki: WikiInfo | null;
   wikiLoading: boolean;
+  photo?: ShipPhoto | null;
+  photoLoading?: boolean;
   onClose: () => void;
 }) {
   const m = panelMeta(info);
+  const isShip = info.kind === "ship";
+  const realPhoto = isShip ? photo?.url : undefined;
+  // While a vessel's own photo is still loading, show a loading state rather
+  // than a representative image, so a possibly-wrong stand-in never flashes.
+  const stillLoadingShip = isShip && !!photoLoading;
+  const imgUrl = realPhoto ?? (stillLoadingShip ? undefined : wiki?.image);
+  const representative = isShip && !realPhoto && !stillLoadingShip && !!wiki?.image;
+  const imgLoading = wikiLoading || stillLoadingShip;
   return (
     <div
       className={`absolute bottom-3 left-3 z-20 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border ${PANEL_ACCENT[m.accent]} bg-neutral-900/80 p-3.5 shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-4`}
@@ -556,16 +601,23 @@ function InfoDetailPanel({
         </button>
       </div>
 
-      {wiki?.image ? (
-        <img
-          src={wiki.image}
-          alt={m.title}
-          loading="lazy"
-          className="mt-3 h-28 w-full rounded-lg object-cover"
-        />
+      {imgUrl ? (
+        <div className="relative mt-3">
+          <img
+            src={imgUrl}
+            alt={m.title}
+            loading="lazy"
+            className="h-28 w-full rounded-lg object-cover"
+          />
+          {representative && (
+            <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-neutral-300">
+              Symbolbild
+            </span>
+          )}
+        </div>
       ) : (
         <div className="mt-3 flex h-28 w-full items-center justify-center rounded-lg bg-white/5 text-3xl">
-          {wikiLoading ? (
+          {imgLoading ? (
             <span className="text-xs text-neutral-500">lädt…</span>
           ) : (
             m.emoji

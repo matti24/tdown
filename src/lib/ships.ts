@@ -260,7 +260,7 @@ const CATEGORIES: {
   color: [number, number, number];
   pool: string[];
 }[] = [
-  { name: "Other", color: [0.75, 0.8, 0.85], pool: ["Ship", "Merchant ship", "Boat"] },
+  { name: "Other", color: [0.75, 0.8, 0.85], pool: ["Cargo ship", "Container ship", "Bulk carrier"] },
   { name: "Fishing", color: [0.4, 0.9, 0.5], pool: ["Fishing vessel", "Factory ship"] },
   { name: "Tug / Special", color: [0.85, 0.82, 0.5], pool: ["Tugboat", "Pilot boat"] },
   { name: "Sailing / Pleasure", color: [0.55, 0.9, 0.9], pool: ["Yacht", "Sailing yacht", "Sailing ship"] },

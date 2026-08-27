@@ -107,6 +107,7 @@ export function SatellitesLayer({
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const raycaster = useThree((s) => s.raycaster);
+  const camera = useThree((s) => s.camera);
   const ringRef = useRef<THREE.Mesh>(null);
   const selectedIndexRef = useRef(-1);
   const [hovered, setHovered] = useState<HoveredSatellite | null>(null);
@@ -287,9 +288,29 @@ export function SatellitesLayer({
 
   if (working.length === 0) return null;
 
+  // Raycasts pass straight through the globe mesh, so ignore hits on satellites
+  // that are actually behind the planet from the camera's point of view.
+  const visibleHit = (point: THREE.Vector3) => {
+    const c = camera.position;
+    const dx = point.x - c.x;
+    const dy = point.y - c.y;
+    const dz = point.z - c.z;
+    const a = dx * dx + dy * dy + dz * dz;
+    const b = 2 * (c.x * dx + c.y * dy + c.z * dz);
+    const cc = c.x * c.x + c.y * c.y + c.z * c.z - radius * radius;
+    const disc = b * b - 4 * a * cc;
+    if (disc <= 0) return true;
+    const t = (-b - Math.sqrt(disc)) / (2 * a);
+    return !(t > 1e-3 && t < 1 - 1e-3);
+  };
+
   const showTooltip = (event: ThreeEvent<PointerEvent | MouseEvent>) => {
     const index = event.index;
     if (index == null) return;
+    if (!visibleHit(event.point)) {
+      setHovered(null);
+      return;
+    }
     event.stopPropagation();
     const record = working[index];
     if (!record) return;
@@ -317,6 +338,7 @@ export function SatellitesLayer({
   const selectSat = (event: ThreeEvent<MouseEvent>) => {
     const index = event.index;
     if (index == null) return;
+    if (!visibleHit(event.point)) return;
     event.stopPropagation();
     const rec = working[index];
     if (!rec) return;

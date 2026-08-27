@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { Html, Line } from "@react-three/drei";
 import * as THREE from "three";
 import { usePolling } from "@/hooks/use-live-data";
@@ -17,6 +17,7 @@ interface IssLayerProps {
 /** Live-Position der ISS (wheretheiss.at) mit weich interpolierter Bewegung und Flugbahn. */
 export function IssLayer({ onSelect, selected }: IssLayerProps) {
   const radius = useGlobeRadius();
+  const camera = useThree((s) => s.camera);
   const { data } = usePolling(fetchIss, 5000, true);
   const markerRef = useRef<THREE.Group>(null);
   const initialized = useRef(false);
@@ -51,6 +52,21 @@ export function IssLayer({ onSelect, selected }: IssLayerProps) {
     }
   });
 
+  // True when a point is hidden behind the globe from the camera's viewpoint.
+  const occluded = (p: THREE.Vector3) => {
+    const c = camera.position;
+    const dx = p.x - c.x;
+    const dy = p.y - c.y;
+    const dz = p.z - c.z;
+    const a = dx * dx + dy * dy + dz * dz;
+    const b = 2 * (c.x * dx + c.y * dy + c.z * dz);
+    const cc = c.x * c.x + c.y * c.y + c.z * c.z - radius * radius;
+    const disc = b * b - 4 * a * cc;
+    if (disc <= 0) return false;
+    const t = (-b - Math.sqrt(disc)) / (2 * a);
+    return t > 1e-3 && t < 1 - 1e-3;
+  };
+
   return (
     <group>
       {trail.length >= 2 && (
@@ -67,10 +83,12 @@ export function IssLayer({ onSelect, selected }: IssLayerProps) {
       <group ref={markerRef}>
         <mesh
           onClick={(e) => {
+            if (occluded(e.point)) return;
             e.stopPropagation();
             if (data) onSelectRef.current?.(data);
           }}
-          onPointerOver={() => {
+          onPointerOver={(e) => {
+            if (occluded(e.point)) return;
             document.body.style.cursor = "pointer";
           }}
           onPointerOut={() => {
