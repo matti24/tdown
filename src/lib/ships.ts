@@ -8,6 +8,8 @@ import { useEffect, useRef, useState } from "react";
 const AIS_WS = "wss://stream.aisstream.io/v0/stream";
 const MAX_SHIPS = 6000;
 const FLUSH_MS = 2000;
+// AISStream pushes each message as a binary frame, decoded to JSON text.
+const decoder = new TextDecoder();
 
 export interface Ship {
   mmsi: number;
@@ -96,6 +98,7 @@ export function useAisStream(enabled: boolean): {
 
     const connect = () => {
       ws = new WebSocket(AIS_WS);
+      ws.binaryType = "arraybuffer";
       ws.onopen = () => {
         retry = 0;
         setConnected(true);
@@ -113,9 +116,16 @@ export function useAisStream(enabled: boolean): {
         );
       };
       ws.onmessage = (ev) => {
+        const text =
+          typeof ev.data === "string"
+            ? ev.data
+            : ev.data instanceof ArrayBuffer
+              ? decoder.decode(ev.data)
+              : "";
+        if (!text) return;
         let msg: AisMessage;
         try {
-          msg = JSON.parse(ev.data as string);
+          msg = JSON.parse(text);
         } catch {
           return;
         }
