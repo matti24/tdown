@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 
 export interface LayerState {
   flights: boolean;
+  ships: boolean;
   iss: boolean;
   satellites: boolean;
 }
@@ -15,6 +16,7 @@ interface LayerMeta {
 
 const LAYER_META: LayerMeta[] = [
   { key: "flights", label: "Flights", icon: "✈️", desc: "Live ADS-B" },
+  { key: "ships", label: "Ships", icon: "🚢", desc: "Live AIS" },
   { key: "iss", label: "ISS", icon: "🛰️", desc: "Live position" },
   {
     key: "satellites",
@@ -30,7 +32,11 @@ interface GlobeControlsProps {
   hidden?: Partial<Record<keyof LayerState, boolean>>;
 }
 
-export function GlobeControls({ layers, onToggle, hidden }: GlobeControlsProps) {
+export function GlobeControls({
+  layers,
+  onToggle,
+  hidden,
+}: GlobeControlsProps) {
   return (
     <div className="pointer-events-none absolute inset-0 z-20">
       {/* Layer toggles (top-left) */}
@@ -86,7 +92,7 @@ export function GlobeControls({ layers, onToggle, hidden }: GlobeControlsProps) 
 
       {/* Data source (bottom-right, hidden on small screens) */}
       <div className="absolute bottom-3 right-3 hidden max-w-[45%] text-right text-[10px] leading-tight text-neutral-500 sm:bottom-4 sm:right-4 sm:block">
-        Data: OpenSky · wheretheiss.at · Celestrak
+        Data: OpenSky · AISstream · wheretheiss.at · Celestrak
       </div>
     </div>
   );

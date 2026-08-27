@@ -3,12 +3,14 @@ import { Globe3D } from "@/components/ui/3d-globe";
 import { GlobeControls, type LayerState } from "@/components/globe-controls";
 import { IssLayer } from "@/components/globe-layers/iss-layer";
 import { FlightsLayer } from "@/components/globe-layers/flights-layer";
+import { ShipsLayer } from "@/components/globe-layers/ships-layer";
 import {
   SatellitesLayer,
   type SatelliteStats,
 } from "@/components/globe-layers/satellites-layer";
 import { fetchFlights, type Flight } from "@/lib/flights";
 import { fetchFlightInfo, type FlightInfo } from "@/lib/flight-info";
+import { useAisStream, hasAisKey } from "@/lib/ships";
 import { usePolling } from "@/hooks/use-live-data";
 
 const FLIGHTS_REFRESH_MS = 30_000;
@@ -16,6 +18,7 @@ const FLIGHTS_REFRESH_MS = 30_000;
 export default function Globe3DDemo() {
   const [layers, setLayers] = useState<LayerState>({
     flights: true,
+    ships: true,
     iss: true,
     satellites: true,
   });
@@ -36,6 +39,10 @@ export default function Globe3DDemo() {
     : flightsData
       ? flights.length > 0
       : true;
+
+  // Live vessels stream directly from AISStream (only if a key is configured).
+  const shipsAvailable = hasAisKey();
+  const { ships } = useAisStream(layers.ships && shipsAvailable);
 
   const toggle = (key: keyof LayerState) =>
     setLayers((l) => ({ ...l, [key]: !l[key] }));
@@ -105,18 +112,34 @@ export default function Globe3DDemo() {
       <GlobeControls
         layers={layers}
         onToggle={toggle}
-        hidden={{ flights: !flightsAvailable }}
+        hidden={{ flights: !flightsAvailable, ships: !shipsAvailable }}
       />
 
-      {layers.flights && flightsAvailable && flights.length > 0 && (
-        <div className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md sm:right-4 sm:top-4">
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-          <span className="text-sm font-semibold text-white">
-            ✈️ {flights.length.toLocaleString("en-US")}
-          </span>
-          <span className="hidden text-[11px] text-neutral-400 sm:inline">
-            flights live
-          </span>
+      {((layers.flights && flightsAvailable && flights.length > 0) ||
+        (layers.ships && shipsAvailable && ships.length > 0)) && (
+        <div className="pointer-events-none absolute right-3 top-3 z-20 flex flex-col items-end gap-1.5 sm:right-4 sm:top-4">
+          {layers.flights && flightsAvailable && flights.length > 0 && (
+            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+              <span className="text-sm font-semibold text-white">
+                ✈️ {flights.length.toLocaleString("en-US")}
+              </span>
+              <span className="hidden text-[11px] text-neutral-400 sm:inline">
+                flights live
+              </span>
+            </div>
+          )}
+          {layers.ships && shipsAvailable && ships.length > 0 && (
+            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md">
+              <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
+              <span className="text-sm font-semibold text-white">
+                🚢 {ships.length.toLocaleString("en-US")}
+              </span>
+              <span className="hidden text-[11px] text-neutral-400 sm:inline">
+                ships live
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -168,6 +191,7 @@ export default function Globe3DDemo() {
             route={route}
           />
         )}
+        {layers.ships && shipsAvailable && <ShipsLayer ships={ships} />}
         {layers.satellites && <SatellitesLayer onStats={handleSatStats} />}
       </Globe3D>
 

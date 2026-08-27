@@ -2,6 +2,7 @@ import * as THREE from "three";
 
 let airplane: THREE.Texture | null = null;
 let circle: THREE.Texture | null = null;
+let ship: THREE.Texture | null = null;
 
 /** Top-down white airplane silhouette (tinted per-point via vertex colors). */
 export function airplaneTexture(): THREE.Texture {
@@ -62,4 +63,34 @@ export function circleTexture(): THREE.Texture {
   circle.colorSpace = THREE.SRGBColorSpace;
   circle.needsUpdate = true;
   return circle;
+}
+
+/** Top-down white vessel silhouette (bow up; tinted per-instance). */
+export function shipTexture(): THREE.Texture {
+  if (ship) return ship;
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  ctx.translate(size / 2, size / 2);
+  ctx.scale(size / 64, size / 64);
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(0, -27); // bow tip
+  ctx.lineTo(6, -14);
+  ctx.lineTo(7, 16); // right side
+  ctx.lineTo(5, 25); // stern right
+  ctx.lineTo(-5, 25); // stern left
+  ctx.lineTo(-7, 16); // left side
+  ctx.lineTo(-6, -14);
+  ctx.closePath();
+  ctx.fill();
+  ship = new THREE.CanvasTexture(canvas);
+  ship.colorSpace = THREE.SRGBColorSpace;
+  // No mipmaps: averaged alpha would make alphaTest discard the icon when small.
+  ship.generateMipmaps = false;
+  ship.minFilter = THREE.LinearFilter;
+  ship.magFilter = THREE.LinearFilter;
+  ship.needsUpdate = true;
+  return ship;
 }
