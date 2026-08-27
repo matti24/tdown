@@ -356,11 +356,11 @@ function FlightDetailPanel({
   const vr = flight.verticalRateMs;
   const trend =
     vr > 0.5
-      ? `↑ steigend (${Math.round(vr * 196.85)} ft/min)`
+      ? `↑ climbing (${Math.round(vr * 196.85)} ft/min)`
       : vr < -0.5
-        ? `↓ sinkend (${Math.round(Math.abs(vr) * 196.85)} ft/min)`
-        : "→ Reiseflug";
-  const fallback = loading ? "…" : "unbekannt";
+        ? `↓ descending (${Math.round(Math.abs(vr) * 196.85)} ft/min)`
+        : "→ cruising";
+  const fallback = loading ? "…" : "unknown";
   const airline = info?.airline || fallback;
   const model =
     [info?.manufacturer, info?.model].filter(Boolean).join(" ") || fallback;
@@ -373,7 +373,7 @@ function FlightDetailPanel({
           </span>
           <div>
             <div className="text-sm font-semibold leading-tight text-white">
-              {flight.callsign || "Unbekannt"}
+              {flight.callsign || "Unknown"}
             </div>
             <div className="text-[11px] leading-tight text-neutral-400">
               {airline}
@@ -384,7 +384,7 @@ function FlightDetailPanel({
           type="button"
           onClick={onClose}
           className="-mr-1 -mt-1 rounded-lg px-1.5 py-0.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Verfolgung beenden"
+          aria-label="Stop tracking"
         >
           ✕
         </button>
@@ -405,7 +405,7 @@ function FlightDetailPanel({
             {info?.originIata || "—"}
           </span>
           <span className="truncate text-[10px] text-neutral-500">
-            {info?.originCity || (loading ? "…" : "Herkunft")}
+            {info?.originCity || (loading ? "…" : "Origin")}
           </span>
         </div>
         <div className="flex flex-1 items-center gap-1 text-amber-300/70">
@@ -418,32 +418,32 @@ function FlightDetailPanel({
             {info?.destIata || "—"}
           </span>
           <span className="truncate text-[10px] text-neutral-500">
-            {info?.destCity || (loading ? "…" : "Ziel")}
+            {info?.destCity || (loading ? "…" : "Destination")}
           </span>
         </div>
       </div>
 
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
         <div className="col-span-2">
-          <dt className="text-neutral-500">Modell</dt>
+          <dt className="text-neutral-500">Model</dt>
           <dd className="font-medium text-neutral-200">{model}</dd>
         </div>
         <div>
-          <dt className="text-neutral-500">Geschwindigkeit</dt>
+          <dt className="text-neutral-500">Speed</dt>
           <dd className="font-medium text-neutral-200">
-            {speedKmh.toLocaleString("de-DE")} km/h
+            {speedKmh.toLocaleString("en-US")} km/h
           </dd>
         </div>
         <div>
-          <dt className="text-neutral-500">Höhe</dt>
+          <dt className="text-neutral-500">Altitude</dt>
           <dd className="font-medium text-neutral-200">
             {flight.altFt > 0
-              ? `${flight.altFt.toLocaleString("de-DE")} ft`
-              : "am Boden"}
+              ? `${flight.altFt.toLocaleString("en-US")} ft`
+              : "on ground"}
           </dd>
         </div>
         <div className="col-span-2">
-          <dt className="text-neutral-500">Vertikal</dt>
+          <dt className="text-neutral-500">Vertical</dt>
           <dd className="font-medium text-neutral-200">{trend}</dd>
         </div>
       </dl>
@@ -453,7 +453,7 @@ function FlightDetailPanel({
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
         </span>
-        Frei drehbar – dem Flugweg folgen
+        Rotate freely – follow the flight path
       </div>
     </div>
   );
@@ -491,13 +491,13 @@ function panelMeta(info: SelInfo): {
       emoji: "🛰️",
       accent: "sky",
       title: "ISS",
-      subtitle: "Internationale Raumstation",
-      note: "Live-Position · ~16 Erdumrundungen/Tag",
+      subtitle: "International Space Station",
+      note: "Live position · ~16 orbits/day",
       rows: [
-        ["Höhe", `${Math.round(d.altitude).toLocaleString("de-DE")} km`],
-        ["Tempo", `${Math.round(d.velocity).toLocaleString("de-DE")} km/h`],
+        ["Altitude", `${Math.round(d.altitude).toLocaleString("en-US")} km`],
+        ["Speed", `${Math.round(d.velocity).toLocaleString("en-US")} km/h`],
         ["Position", `${d.lat.toFixed(2)}°, ${d.lng.toFixed(2)}°`],
-        ["Umlaufzeit", "~92 Min"],
+        ["Orbit", "~92 min"],
       ],
     };
   }
@@ -508,11 +508,11 @@ function panelMeta(info: SelInfo): {
       accent: "violet",
       title: s.name,
       subtitle: s.purpose,
-      note: "Linie = Bahn der letzten 90 Minuten",
+      note: "Line = last 90 minutes of orbit",
       rows: [
-        ["Höhe", `${Math.round(s.altKm).toLocaleString("de-DE")} km`],
-        ["Tempo", `${Math.round(s.speedKmh).toLocaleString("de-DE")} km/h`],
-        ["Umlaufzeit", `${s.periodMin.toFixed(0)} Min`],
+        ["Altitude", `${Math.round(s.altKm).toLocaleString("en-US")} km`],
+        ["Speed", `${Math.round(s.speedKmh).toLocaleString("en-US")} km/h`],
+        ["Orbit", `${s.periodMin.toFixed(0)} min`],
         ["Position", `${s.lat.toFixed(1)}°, ${s.lng.toFixed(1)}°`],
       ],
     };
@@ -520,18 +520,18 @@ function panelMeta(info: SelInfo): {
   const sh = info.ship;
   const cat = shipCategory(sh.type);
   const rows: [string, string][] = [
-    ["Flagge", shipFlag(sh.mmsi) ?? "—"],
-    ["Typ", cat.name],
+    ["Flag", shipFlag(sh.mmsi) ?? "—"],
+    ["Type", cat.name],
     [
-      "Tempo",
-      sh.speedKn < 0.5 ? "vor Anker" : `${Math.round(sh.speedKn * 1.852)} km/h`,
+      "Speed",
+      sh.speedKn < 0.5 ? "at anchor" : `${Math.round(sh.speedKn * 1.852)} km/h`,
     ],
-    ["Ziel", sh.destination || "—"],
+    ["Destination", sh.destination || "—"],
   ];
   if (sh.eta) rows.push(["ETA (UTC)", sh.eta]);
-  if (sh.lengthM) rows.push(["Maße", `${sh.lengthM} × ${sh.beamM ?? "?"} m`]);
-  if (sh.draughtM) rows.push(["Tiefgang", `${sh.draughtM.toFixed(1)} m`]);
-  if (sh.callSign) rows.push(["Rufzeichen", sh.callSign]);
+  if (sh.lengthM) rows.push(["Size", `${sh.lengthM} × ${sh.beamM ?? "?"} m`]);
+  if (sh.draughtM) rows.push(["Draught", `${sh.draughtM.toFixed(1)} m`]);
+  if (sh.callSign) rows.push(["Call sign", sh.callSign]);
   if (sh.imo) rows.push(["IMO", String(sh.imo)]);
   rows.push(["MMSI", String(sh.mmsi)]);
   return {
@@ -539,10 +539,7 @@ function panelMeta(info: SelInfo): {
     accent: "cyan",
     title: sh.name || `MMSI ${sh.mmsi}`,
     subtitle: cat.name,
-    note:
-      sh.speedKn < 0.5
-        ? "Live-Position · vor Anker"
-        : "Linie = Fahrtrichtung (woher · wohin)",
+    note: sh.speedKn < 0.5 ? "Live position · at anchor" : "Live position",
     rows,
   };
 }
@@ -569,7 +566,6 @@ function InfoDetailPanel({
   // than a representative image, so a possibly-wrong stand-in never flashes.
   const stillLoadingShip = isShip && !!photoLoading;
   const imgUrl = realPhoto ?? (stillLoadingShip ? undefined : wiki?.image);
-  const representative = isShip && !realPhoto && !stillLoadingShip && !!wiki?.image;
   const imgLoading = wikiLoading || stillLoadingShip;
   return (
     <div
@@ -595,30 +591,23 @@ function InfoDetailPanel({
           type="button"
           onClick={onClose}
           className="-mr-1 -mt-1 shrink-0 rounded-lg px-1.5 py-0.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Schließen"
+          aria-label="Close"
         >
           ✕
         </button>
       </div>
 
       {imgUrl ? (
-        <div className="relative mt-3">
-          <img
-            src={imgUrl}
-            alt={m.title}
-            loading="lazy"
-            className="h-28 w-full rounded-lg object-cover"
-          />
-          {representative && (
-            <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-neutral-300">
-              Symbolbild
-            </span>
-          )}
-        </div>
+        <img
+          src={imgUrl}
+          alt={m.title}
+          loading="lazy"
+          className="mt-3 h-28 w-full rounded-lg object-cover"
+        />
       ) : (
         <div className="mt-3 flex h-28 w-full items-center justify-center rounded-lg bg-white/5 text-3xl">
           {imgLoading ? (
-            <span className="text-xs text-neutral-500">lädt…</span>
+            <span className="text-xs text-neutral-500">loading…</span>
           ) : (
             m.emoji
           )}
