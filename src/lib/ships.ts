@@ -23,7 +23,12 @@ export interface Ship {
   destination?: string;
 }
 
-/** Resolve the AISStream API key from build env or a localStorage override. */
+// >>> HIER deinen kostenlosen aisstream.io API-Key eintragen, damit die Schiffe
+//     dauerhaft laden (auch auf der veröffentlichten Seite). Hinweis: bei einem
+//     öffentlichen Repo ist der Key im Frontend sichtbar – notfalls neu erzeugen.
+const AIS_KEY = "";
+
+/** Resolve the AISStream API key: env / localStorage override, else AIS_KEY. */
 function aisKey(): string {
   const env = (import.meta.env as Record<string, string | undefined>)
     .VITE_AISSTREAM_API_KEY;
@@ -32,7 +37,7 @@ function aisKey(): string {
     const ls = localStorage.getItem("aisstream_key");
     if (ls && ls.trim()) return ls.trim();
   }
-  return "";
+  return AIS_KEY;
 }
 
 export function hasAisKey(): boolean {
