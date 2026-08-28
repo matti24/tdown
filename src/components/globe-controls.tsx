@@ -176,7 +176,7 @@ export function GlobeControls({ layers, onToggle, hidden }: GlobeControlsProps) 
 
       {/* Data source (bottom-right, hidden on small screens) */}
       <div className="absolute bottom-3 right-3 hidden max-w-[45%] text-right text-[10px] leading-tight text-neutral-500 sm:bottom-4 sm:right-4 sm:block">
-        Data: OpenSky · AISstream · wheretheiss.at · Celestrak
+        Data: adsb.fi · AISstream · wheretheiss.at · Celestrak
       </div>
     </div>
   );

@@ -1,8 +1,8 @@
-// Live aircraft via a personal Deno Deploy proxy that fetches OpenSky
-// server-side (Cloudflare IPs are blocked by OpenSky) and adds CORS, returning
+// Live aircraft via a personal Deno Deploy proxy (see proxy/flights-proxy.ts)
+// that tiles adsb.fi server-side (ADS-B APIs send no CORS headers) and returns
 // a compact { ac: [{ c, la, lo, al, s, t, vr, co, i }] } payload (al = feet,
 // s = knots, t = track°, vr = vertical rate m/s, co = origin country,
-// i = icao24 / mode-s hex, optional – needed for the aircraft model lookup).
+// i = icao24 / mode-s hex – needed for the aircraft model lookup).
 const FLIGHTS_PROXY = "https://comfortable-cheetah-8401.matti24.deno.net/";
 
 export interface Flight {
