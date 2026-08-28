@@ -12,11 +12,17 @@
 // DEPLOY: replace the current OpenSky proxy on Deno Deploy with this file
 // (same project → same URL, so the app keeps working unchanged). No env vars,
 // no credits. Please keep a receiver / cite adsb.fi per their terms.
+//
+// Free-tier friendly: NO background loop. It only works on demand — one small
+// batch of tiles per SWEEP_EVERY_MS, shared across callers and served from an
+// in-memory cache — so it stays well within serverless request/CPU limits.
 
 const SRC = "https://opendata.adsb.fi/api/v3";
 const TILE_DIST = 250; // NM (adsb.fi max)
-const TILE_GAP_MS = 1050; // stay under the 1 req/s public limit
-const MAX_AGE_MS = 150_000; // drop aircraft not re-seen within ~2 sweeps
+const TILE_GAP_MS = 1100; // stay under adsb.fi's 1 req/s limit
+const BATCH = 8; // tiles fetched per refresh (the triggering request absorbs the wait)
+const SWEEP_EVERY_MS = 9_000; // at most one refresh batch per this window
+const MAX_AGE_MS = 6 * 60_000; // keep an aircraft until its tile is re-swept
 
 // Tile centres over regions with ADS-B receiver coverage + traffic. Each covers
 // a 250 NM radius; overlaps are deduped by hex.
@@ -103,7 +109,9 @@ interface Raw {
 
 const store = new Map<string, { a: Raw; t: number }>();
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-let looping = false;
+let cursor = 0;
+let lastSweep = 0;
+let sweeping: Promise<void> | null = null;
 
 async function fetchTile(lat: number, lon: number): Promise<Raw[]> {
   const res = await fetch(`${SRC}/lat/${lat}/lon/${lon}/dist/${TILE_DIST}`, {
@@ -114,24 +122,31 @@ async function fetchTile(lat: number, lon: number): Promise<Raw[]> {
   return Array.isArray(j?.ac) ? j.ac : [];
 }
 
-async function refreshLoop() {
-  if (looping) return;
-  looping = true;
-  for (;;) {
-    for (const [lat, lon] of TILES) {
-      try {
-        const now = Date.now();
-        for (const a of await fetchTile(lat, lon)) {
-          if (a.hex && Number.isFinite(a.lat) && Number.isFinite(a.lon)) {
-            store.set(a.hex, { a, t: now });
-          }
+// Fetch one rate-limited batch of tiles (round-robin), merging into the store.
+async function sweepBatch() {
+  for (let k = 0; k < BATCH; k++) {
+    const [lat, lon] = TILES[cursor++ % TILES.length];
+    try {
+      const now = Date.now();
+      for (const a of await fetchTile(lat, lon)) {
+        if (a.hex && Number.isFinite(a.lat) && Number.isFinite(a.lon)) {
+          store.set(a.hex, { a, t: now });
         }
-      } catch {
-        // Skip a failing tile; the next sweep retries it.
       }
-      await sleep(TILE_GAP_MS);
+    } catch {
+      // Skip a failing tile; a later sweep retries it.
     }
+    await sleep(TILE_GAP_MS);
   }
+}
+
+// Kick off a batch if one is due. Only the request that starts it awaits it, so
+// the work finishes within a request (serverless-safe) while others serve cache.
+function startSweepIfDue(): Promise<void> | null {
+  if (sweeping || Date.now() - lastSweep < SWEEP_EVERY_MS) return null;
+  lastSweep = Date.now();
+  sweeping = sweepBatch().finally(() => (sweeping = null));
+  return sweeping;
 }
 
 function snapshot() {
@@ -158,18 +173,16 @@ function snapshot() {
   return ac;
 }
 
-// Warm the isolate; requests are served from the rolling store below.
-refreshLoop();
-
-Deno.serve((req: Request) => {
+Deno.serve(async (req: Request) => {
   const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
   };
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
-  // Restart the sweep if the isolate was recycled.
-  refreshLoop();
+  // Advance the rolling snapshot on demand; only the starter awaits the batch.
+  const started = startSweepIfDue();
+  if (started) await started;
 
   const ac = snapshot();
   return new Response(JSON.stringify({ ac, count: ac.length, now: Date.now() }), {
