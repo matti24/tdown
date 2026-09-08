@@ -23,6 +23,8 @@ import {
 import { type IssPosition } from "@/lib/live-data";
 import { fetchWikiInfo, type WikiInfo } from "@/lib/wiki";
 import { fetchShipPhoto, type ShipPhoto } from "@/lib/ship-photo";
+import { nextIssPasses, type IssPass } from "@/lib/iss-pass";
+import { UserMarkerLayer } from "@/components/globe-layers/user-marker-layer";
 import { usePolling } from "@/hooks/use-live-data";
 
 const FLIGHTS_REFRESH_MS = 30_000;
@@ -48,6 +50,16 @@ export default function Globe3DDemo() {
   const [wikiLoading, setWikiLoading] = useState(false);
   const [shipPhoto, setShipPhoto] = useState<ShipPhoto | null>(null);
   const [shipPhotoLoading, setShipPhotoLoading] = useState(false);
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+  const [flyNonce, setFlyNonce] = useState(0);
+  const [locating, setLocating] = useState(false);
+  const [locError, setLocError] = useState<string | null>(null);
+  const [place, setPlace] = useState<string | null>(null);
+  const [passes, setPasses] = useState<IssPass[] | null>(null);
+  const [passesLoading, setPassesLoading] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   // One live-flights poll drives both the layer and the "is it available?" gate.
   const { data: flightsData, error: flightsError } = usePolling(
@@ -209,6 +221,85 @@ export default function Globe3DDemo() {
     };
   }, [selectedInfo]);
 
+  // --- User location + next ISS pass ---------------------------------------
+  const handleLocate = useCallback(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocError("Geolocation unavailable");
+      return;
+    }
+    setLocating(true);
+    setLocError(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        const lat = p.coords.latitude;
+        const lng = p.coords.longitude;
+        setUserLoc({ lat, lng });
+        setFlyNonce((n) => n + 1);
+        setLocating(false);
+        setPlace(null);
+        fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`,
+        )
+          .then((r) => r.json())
+          .then((j) => {
+            const name = [j.city || j.locality, j.countryName]
+              .filter(Boolean)
+              .join(", ");
+            if (name) setPlace(name);
+          })
+          .catch(() => {});
+      },
+      (err) => {
+        setLocating(false);
+        setLocError(
+          err.code === 1 ? "Permission denied" : "Location unavailable",
+        );
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    );
+  }, []);
+
+  const handleClearLocation = useCallback(() => {
+    setUserLoc(null);
+    setPlace(null);
+    setLocError(null);
+  }, []);
+
+  // Predict passes on locate, then refresh so elapsed ones roll off.
+  useEffect(() => {
+    if (!userLoc) {
+      setPasses(null);
+      return;
+    }
+    let cancelled = false;
+    const compute = () => {
+      setPassesLoading(true);
+      nextIssPasses(userLoc.lat, userLoc.lng, { count: 3 })
+        .then((ps) => {
+          if (!cancelled) setPasses(ps);
+        })
+        .catch(() => {
+          if (!cancelled) setPasses([]);
+        })
+        .finally(() => {
+          if (!cancelled) setPassesLoading(false);
+        });
+    };
+    compute();
+    const id = window.setInterval(compute, 5 * 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [userLoc]);
+
+  // Tick the countdown while a location is shown.
+  useEffect(() => {
+    if (!userLoc) return;
+    const id = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [userLoc]);
+
   return (
     <div className="relative h-full w-full">
       <GlobeControls
@@ -217,33 +308,41 @@ export default function Globe3DDemo() {
         hidden={{ flights: !flightsAvailable, ships: !shipsAvailable }}
       />
 
-      {((layers.flights && flightsAvailable && flights.length > 0) ||
-        (layers.ships && shipsAvailable && ships.length > 0)) && (
-        <div className="pointer-events-none absolute right-3 top-3 z-20 flex flex-col items-end gap-1.5 sm:right-4 sm:top-4">
-          {layers.flights && flightsAvailable && flights.length > 0 && (
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md">
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-              <span className="text-sm font-semibold text-white">
-                ✈️ {flights.length.toLocaleString("en-US")}
-              </span>
-              <span className="hidden text-[11px] text-neutral-400 sm:inline">
-                flights live
-              </span>
-            </div>
-          )}
-          {layers.ships && shipsAvailable && ships.length > 0 && (
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md">
-              <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
-              <span className="text-sm font-semibold text-white">
-                🚢 {ships.length.toLocaleString("en-US")}
-              </span>
-              <span className="hidden text-[11px] text-neutral-400 sm:inline">
-                ships live
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+      <div className="pointer-events-none absolute right-3 top-3 z-20 flex flex-col items-end gap-1.5 sm:right-4 sm:top-4">
+        <LocationCard
+          loc={userLoc}
+          place={place}
+          passes={passes}
+          passesLoading={passesLoading}
+          locating={locating}
+          error={locError}
+          now={nowTick}
+          onLocate={handleLocate}
+          onClear={handleClearLocation}
+        />
+        {layers.flights && flightsAvailable && flights.length > 0 && (
+          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+            <span className="text-sm font-semibold text-white">
+              ✈️ {flights.length.toLocaleString("en-US")}
+            </span>
+            <span className="hidden text-[11px] text-neutral-400 sm:inline">
+              flights live
+            </span>
+          </div>
+        )}
+        {layers.ships && shipsAvailable && ships.length > 0 && (
+          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md">
+            <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
+            <span className="text-sm font-semibold text-white">
+              🚢 {ships.length.toLocaleString("en-US")}
+            </span>
+            <span className="hidden text-[11px] text-neutral-400 sm:inline">
+              ships live
+            </span>
+          </div>
+        )}
+      </div>
 
       {layers.satellites && satStats && (
         <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-col items-center gap-1 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 text-center shadow-2xl backdrop-blur-md sm:bottom-4 sm:px-3.5 sm:py-2">
@@ -315,6 +414,13 @@ export default function Globe3DDemo() {
             selectedSatId={
               selectedInfo?.kind === "sat" ? selectedInfo.sat.id : null
             }
+          />
+        )}
+        {userLoc && (
+          <UserMarkerLayer
+            lat={userLoc.lat}
+            lng={userLoc.lng}
+            flyNonce={flyNonce}
           />
         )}
       </Globe3D>
@@ -799,5 +905,129 @@ function PlayIcon() {
     <svg viewBox="0 0 24 24" className="h-4 w-4 translate-x-px" fill="currentColor">
       <path d="M8 5v14l11-7z" />
     </svg>
+  );
+}
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "overhead now";
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `in ${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `in ${m} min`;
+  const h = Math.floor(m / 60);
+  return `in ${h}h ${m % 60}m`;
+}
+
+function LocationCard({
+  loc,
+  place,
+  passes,
+  passesLoading,
+  locating,
+  error,
+  now,
+  onLocate,
+  onClear,
+}: {
+  loc: { lat: number; lng: number } | null;
+  place: string | null;
+  passes: IssPass[] | null;
+  passesLoading: boolean;
+  locating: boolean;
+  error: string | null;
+  now: number;
+  onLocate: () => void;
+  onClear: () => void;
+}) {
+  if (!loc) {
+    return (
+      <button
+        type="button"
+        onClick={onLocate}
+        disabled={locating}
+        className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-emerald-400/30 bg-neutral-900/70 px-3 py-1.5 text-sm font-semibold text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-neutral-800/80 disabled:opacity-70"
+      >
+        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+        {locating ? "Locating…" : error ? error : "📍 My location"}
+      </button>
+    );
+  }
+
+  const next = passes?.[0];
+  return (
+    <div className="pointer-events-auto w-56 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-emerald-400/30 bg-neutral-900/80 p-3 shadow-2xl backdrop-blur-md">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/20 text-emerald-200">
+            📍
+          </span>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-semibold leading-tight text-white">
+              {place || "Your location"}
+            </div>
+            <div className="truncate text-[10px] leading-tight text-neutral-500">
+              {loc.lat.toFixed(2)}°, {loc.lng.toFixed(2)}°
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label="Clear location"
+          className="-mr-1 -mt-1 shrink-0 rounded-lg px-1.5 py-0.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="mt-2.5 rounded-xl bg-white/5 p-2.5">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-sky-300">
+          <span className="text-sm">🛰️</span> Next ISS pass
+        </div>
+        {passesLoading ? (
+          <div className="mt-1 text-xs text-neutral-500">Calculating…</div>
+        ) : next ? (
+          <>
+            <div className="mt-0.5 text-lg font-semibold leading-tight text-white">
+              {formatCountdown(next.start.getTime() - now)}
+            </div>
+            <div className="text-[11px] text-neutral-400">
+              max {Math.round(next.maxElevationDeg)}° ·{" "}
+              {Math.round(next.durationSec / 60)} min ·{" "}
+              {next.start.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="mt-1 text-xs text-neutral-500">
+            No pass in the next 48 h
+          </div>
+        )}
+      </div>
+
+      {passes && passes.length > 1 && (
+        <div className="mt-2 space-y-1">
+          {passes.slice(1, 3).map((p) => (
+            <div
+              key={p.start.getTime()}
+              className="flex items-center justify-between text-[11px] text-neutral-400"
+            >
+              <span>
+                {p.start.toLocaleString([], {
+                  weekday: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              <span className="text-neutral-500">
+                max {Math.round(p.maxElevationDeg)}°
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
