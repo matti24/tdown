@@ -648,9 +648,14 @@ function InfoDetailPanel({
   );
 }
 
+// Theater src keeps controls (unmute / fullscreen); the inline "clean" src
+// hides all player chrome and is covered by a click-to-enlarge overlay.
 const ISS_STREAM_SRC =
   "https://www.youtube-nocookie.com/embed/fO9e9jnhYK8" +
-  "?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1";
+  "?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3";
+const ISS_STREAM_CLEAN =
+  "https://www.youtube-nocookie.com/embed/fO9e9jnhYK8" +
+  "?autoplay=1&mute=1&controls=0&disablekb=1&fs=0&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1";
 const ISS_THUMB = "https://i.ytimg.com/vi/fO9e9jnhYK8/hqdefault.jpg";
 
 // Live ISS view (YouTube) for the ISS panel, with a clean, responsive theater
@@ -670,14 +675,21 @@ function IssLiveStream() {
     <>
       <div className="relative mt-3 aspect-video w-full overflow-hidden rounded-lg bg-black ring-1 ring-white/10">
         {playing && !expanded ? (
-          <iframe
-            src={ISS_STREAM_SRC}
-            title="ISS live stream"
-            className="absolute inset-0 h-full w-full"
-            allow="autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-          />
+          <>
+            <iframe
+              src={ISS_STREAM_CLEAN}
+              title="ISS live stream"
+              className="absolute inset-0 h-full w-full"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              aria-label="Enlarge live stream"
+              className="absolute inset-0 h-full w-full cursor-zoom-in"
+            />
+          </>
         ) : (
           <button
             type="button"
