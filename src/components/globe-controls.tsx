@@ -73,7 +73,7 @@ export function GlobeControls({ layers, onToggle, hidden }: GlobeControlsProps) 
     <div className="pointer-events-none absolute inset-0 z-20">
       <div
         className={cn(
-          "pointer-events-auto absolute inset-safe-l inset-safe-t flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/70 shadow-2xl ring-1 ring-inset ring-white/5 backdrop-blur-md",
+          "pointer-events-auto absolute inset-safe-l inset-safe-t max-w-[46vw] flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/70 shadow-2xl ring-1 ring-inset ring-white/5 backdrop-blur-md sm:max-w-none",
           open ? "w-52 p-2 sm:w-56 sm:p-2.5" : "w-auto p-1.5",
         )}
       >
@@ -82,7 +82,7 @@ export function GlobeControls({ layers, onToggle, hidden }: GlobeControlsProps) 
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
           </span>
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+          <h2 className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
             Live Layers
           </h2>
           <span className="ml-auto font-mono text-[10px] tabular-nums text-neutral-500">

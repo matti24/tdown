@@ -959,7 +959,7 @@ function LocationCard({
 
   const next = passes?.[0];
   return (
-    <div className="pointer-events-auto w-56 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-emerald-400/30 bg-neutral-900/80 p-3 shadow-2xl backdrop-blur-md">
+    <div className="pointer-events-auto w-56 max-w-[46vw] rounded-2xl border border-emerald-400/30 bg-neutral-900/80 p-3 shadow-2xl backdrop-blur-md sm:max-w-[calc(100vw-1.5rem)]">
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/20 text-emerald-200">
