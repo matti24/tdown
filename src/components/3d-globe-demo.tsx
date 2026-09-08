@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Globe3D } from "@/components/ui/3d-globe";
 import { GlobeControls, type LayerState } from "@/components/globe-controls";
 import { IssLayer } from "@/components/globe-layers/iss-layer";
@@ -561,6 +562,7 @@ function InfoDetailPanel({
 }) {
   const m = panelMeta(info);
   const isShip = info.kind === "ship";
+  const isIss = info.kind === "iss";
   const realPhoto = isShip ? photo?.url : undefined;
   // While a vessel's own photo is still loading, show a loading state rather
   // than a representative image, so a possibly-wrong stand-in never flashes.
@@ -597,7 +599,9 @@ function InfoDetailPanel({
         </button>
       </div>
 
-      {imgUrl ? (
+      {isIss ? (
+        <IssLiveStream />
+      ) : imgUrl ? (
         <img
           src={imgUrl}
           alt={m.title}
@@ -641,5 +645,147 @@ function InfoDetailPanel({
         {m.note}
       </div>
     </div>
+  );
+}
+
+const ISS_STREAM_SRC =
+  "https://www.youtube-nocookie.com/embed/fO9e9jnhYK8" +
+  "?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1";
+const ISS_THUMB = "https://i.ytimg.com/vi/fO9e9jnhYK8/hqdefault.jpg";
+
+// Live ISS view (YouTube) for the ISS panel, with a clean, responsive theater
+// mode. The inline player is unmounted while enlarged so only one stream runs.
+function IssLiveStream() {
+  const [expanded, setExpanded] = useState(false);
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setExpanded(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded]);
+
+  return (
+    <>
+      <div className="relative mt-3 aspect-video w-full overflow-hidden rounded-lg bg-black ring-1 ring-white/10">
+        {playing && !expanded ? (
+          <iframe
+            src={ISS_STREAM_SRC}
+            title="ISS live stream"
+            className="absolute inset-0 h-full w-full"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setPlaying(true)}
+            aria-label="Play live stream"
+            className="group absolute inset-0 h-full w-full"
+          >
+            <img
+              src={ISS_THUMB}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover opacity-90 transition-opacity group-hover:opacity-100"
+            />
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white shadow-lg transition-transform group-hover:scale-110">
+                <PlayIcon />
+              </span>
+            </span>
+          </button>
+        )}
+        <span className="pointer-events-none absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
+          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+          Live
+        </span>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          aria-label="Enlarge live stream"
+          className="absolute bottom-1.5 right-1.5 rounded-md bg-black/55 p-1 text-white transition-colors hover:bg-black/80"
+        >
+          <MaximizeIcon />
+        </button>
+      </div>
+
+      {expanded &&
+        createPortal(
+          <IssTheater onClose={() => setExpanded(false)} />,
+          document.body,
+        )}
+    </>
+  );
+}
+
+function IssTheater({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="ISS live stream"
+      onClick={onClose}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-6"
+    >
+      <div className="w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-white">
+            <span className="flex shrink-0 items-center gap-1.5 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+              Live
+            </span>
+            <span className="truncate">International Space Station</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="shrink-0 rounded-lg px-2 py-1 text-lg leading-none text-neutral-300 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="aspect-video w-full overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-white/10">
+          <iframe
+            src={ISS_STREAM_SRC}
+            title="ISS live stream"
+            className="h-full w-full"
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        </div>
+        <p className="mt-2 text-center text-[11px] text-neutral-400">
+          Live view from the ISS · press Esc or tap outside to close
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function MaximizeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 translate-x-px" fill="currentColor">
+      <path d="M8 5v14l11-7z" />
+    </svg>
   );
 }
