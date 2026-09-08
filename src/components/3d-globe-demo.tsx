@@ -265,9 +265,10 @@ export default function Globe3DDemo() {
     setLocError(null);
   }, []);
 
-  // Predict passes on locate, then refresh so elapsed ones roll off.
+  // Predict passes on locate while the ISS layer is on; refresh so elapsed
+  // ones roll off.
   useEffect(() => {
-    if (!userLoc) {
+    if (!userLoc || !layers.iss) {
       setPasses(null);
       return;
     }
@@ -291,7 +292,7 @@ export default function Globe3DDemo() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [userLoc]);
+  }, [userLoc, layers.iss]);
 
   // Tick the countdown while a location is shown.
   useEffect(() => {
@@ -319,6 +320,7 @@ export default function Globe3DDemo() {
           now={nowTick}
           onLocate={handleLocate}
           onClear={handleClearLocation}
+          issEnabled={layers.iss}
         />
         {layers.flights && flightsAvailable && flights.length > 0 && (
           <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md">
@@ -928,6 +930,7 @@ function LocationCard({
   now,
   onLocate,
   onClear,
+  issEnabled,
 }: {
   loc: { lat: number; lng: number } | null;
   place: string | null;
@@ -938,6 +941,7 @@ function LocationCard({
   now: number;
   onLocate: () => void;
   onClear: () => void;
+  issEnabled: boolean;
 }) {
   if (!loc) {
     return (
@@ -980,7 +984,9 @@ function LocationCard({
         </button>
       </div>
 
-      <div className="mt-2.5 rounded-xl bg-white/5 p-2.5">
+      {issEnabled ? (
+        <>
+          <div className="mt-2.5 rounded-xl bg-white/5 p-2.5">
         <div className="flex items-center gap-1.5 text-[11px] font-medium text-sky-300">
           <span className="text-sm">🛰️</span> Next ISS pass
         </div>
@@ -1027,6 +1033,12 @@ function LocationCard({
             </div>
           ))}
         </div>
+      )}
+        </>
+      ) : (
+        <p className="mt-2.5 text-[11px] text-neutral-500">
+          Turn on the ISS layer to see the next pass over you.
+        </p>
       )}
     </div>
   );

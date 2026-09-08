@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#102e57"/>
+      <stop offset="0.62" stop-color="#0a1a35"/>
+      <stop offset="1" stop-color="#05080f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.44" r="0.55">
+      <stop offset="0" stop-color="#2f7fe0" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#2f7fe0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="globe" x1="0.24" y1="0.12" x2="0.86" y2="0.92">
+      <stop offset="0" stop-color="#49a4ff"/>
+      <stop offset="1" stop-color="#0b3771"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+
+  <!-- orbit ring (behind the globe) -->
+  <g transform="rotate(-22 256 256)">
+    <ellipse cx="256" cy="256" rx="178" ry="64" fill="none"
+             stroke="#cfe8ff" stroke-opacity="0.42" stroke-width="9"/>
+  </g>
+
+  <!-- globe -->
+  <circle cx="256" cy="256" r="128" fill="url(#globe)"/>
+  <g fill="none" stroke="#eaf5ff" stroke-opacity="0.36" stroke-width="6" stroke-linecap="round">
+    <line x1="134" y1="256" x2="378" y2="256"/>
+    <ellipse cx="256" cy="256" rx="60" ry="128"/>
+  </g>
+  <ellipse cx="214" cy="206" rx="52" ry="30" fill="#ffffff" fill-opacity="0.16"/>
+
+  <!-- tracked object on the ring (front) -->
+  <g transform="rotate(-22 256 256)">
+    <circle cx="434" cy="256" r="18" fill="#34d399" stroke="#05080f" stroke-width="4"/>
+  </g>
+</svg>
