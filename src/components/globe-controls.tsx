@@ -73,7 +73,7 @@ export function GlobeControls({ layers, onToggle, hidden }: GlobeControlsProps) 
     <div className="pointer-events-none absolute inset-0 z-20">
       <div
         className={cn(
-          "pointer-events-auto absolute left-3 top-3 flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/70 shadow-2xl ring-1 ring-inset ring-white/5 backdrop-blur-md sm:left-4 sm:top-4",
+          "pointer-events-auto absolute inset-safe-l inset-safe-t flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/70 shadow-2xl ring-1 ring-inset ring-white/5 backdrop-blur-md",
           open ? "w-52 p-2 sm:w-56 sm:p-2.5" : "w-auto p-1.5",
         )}
       >

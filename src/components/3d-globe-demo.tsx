@@ -309,7 +309,7 @@ export default function Globe3DDemo() {
         hidden={{ flights: !flightsAvailable, ships: !shipsAvailable }}
       />
 
-      <div className="pointer-events-none absolute right-3 top-3 z-20 flex flex-col items-end gap-1.5 sm:right-4 sm:top-4">
+      <div className="pointer-events-none absolute inset-safe-r inset-safe-t z-20 flex flex-col items-end gap-1.5">
         <LocationCard
           loc={userLoc}
           place={place}
@@ -347,7 +347,7 @@ export default function Globe3DDemo() {
       </div>
 
       {layers.satellites && satStats && (
-        <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-col items-center gap-1 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 text-center shadow-2xl backdrop-blur-md sm:bottom-4 sm:px-3.5 sm:py-2">
+        <div className="pointer-events-none absolute inset-safe-b left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-col items-center gap-1 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 text-center shadow-2xl backdrop-blur-md sm:px-3.5 sm:py-2">
           <div className="flex items-baseline gap-2 whitespace-nowrap">
             <span className="text-sm font-semibold text-white">
               📡 {satStats.total.toLocaleString("en-US")} satellites live
@@ -474,7 +474,7 @@ function FlightDetailPanel({
   const model =
     [info?.manufacturer, info?.model].filter(Boolean).join(" ") || fallback;
   return (
-    <div className="absolute bottom-3 left-3 z-20 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-amber-400/30 bg-neutral-900/80 p-3.5 shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-4">
+    <div className="absolute inset-safe-b inset-safe-l z-20 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-amber-400/30 bg-neutral-900/80 p-3.5 shadow-2xl backdrop-blur-md">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-400/20 text-amber-300">
@@ -679,7 +679,7 @@ function InfoDetailPanel({
   const imgLoading = wikiLoading || stillLoadingShip;
   return (
     <div
-      className={`absolute bottom-3 left-3 z-20 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border ${PANEL_ACCENT[m.accent]} bg-neutral-900/80 p-3.5 shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-4`}
+      className={`absolute inset-safe-b inset-safe-l z-20 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border ${PANEL_ACCENT[m.accent]} bg-neutral-900/80 p-3.5 shadow-2xl backdrop-blur-md`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
