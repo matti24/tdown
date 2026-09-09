@@ -17,6 +17,15 @@ export function latLngToVector3(
   return new THREE.Vector3(x, y, z);
 }
 
+/** Inverse of latLngToVector3: the lat/lng a direction vector points at. */
+export function vector3ToLatLng(v: THREE.Vector3): { lat: number; lng: number } {
+  const n = v.clone().normalize();
+  const lat = 90 - (Math.acos(THREE.MathUtils.clamp(n.y, -1, 1)) * 180) / Math.PI;
+  let lng = (Math.atan2(n.z, -n.x) * 180) / Math.PI - 180;
+  lng = ((((lng + 180) % 360) + 360) % 360) - 180;
+  return { lat, lng };
+}
+
 export interface GlobeContextValue {
   radius: number;
 }

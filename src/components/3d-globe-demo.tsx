@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Globe3D } from "@/components/ui/3d-globe";
 import { GlobeControls, type LayerState } from "@/components/globe-controls";
@@ -20,12 +20,15 @@ import {
   shipWikiTopic,
   type Ship,
 } from "@/lib/ships";
-import { type IssPosition } from "@/lib/live-data";
+import { fetchIss, type IssPosition } from "@/lib/live-data";
 import { fetchWikiInfo, type WikiInfo } from "@/lib/wiki";
 import { fetchShipPhoto, type ShipPhoto } from "@/lib/ship-photo";
 import { nextIssPasses, type IssPass } from "@/lib/iss-pass";
 import { UserMarkerLayer } from "@/components/globe-layers/user-marker-layer";
 import { usePolling } from "@/hooks/use-live-data";
+import { DeepZoomTrigger } from "@/components/globe-layers/deep-zoom-trigger";
+
+const MapView = lazy(() => import("@/components/map-view"));
 
 const FLIGHTS_REFRESH_MS = 30_000;
 
@@ -60,6 +63,12 @@ export default function Globe3DDemo() {
   const [passes, setPasses] = useState<IssPass[] | null>(null);
   const [passesLoading, setPassesLoading] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [mapAt, setMapAt] = useState<{
+    lat: number;
+    lng: number;
+    zoom: number;
+  } | null>(null);
+  const centerRef = useRef<{ lat: number; lng: number }>({ lat: 20, lng: 0 });
 
   // One live-flights poll drives both the layer and the "is it available?" gate.
   const { data: flightsData, error: flightsError } = usePolling(
@@ -77,6 +86,22 @@ export default function Globe3DDemo() {
   // Live vessels stream directly from AISStream (only if a key is configured).
   const shipsAvailable = hasAisKey();
   const { ships } = useAisStream(layers.ships && shipsAvailable);
+
+  // Light ISS poll only while the deep-zoom map is open (drives its marker).
+  const { data: issForMap } = usePolling(
+    fetchIss,
+    5000,
+    mapAt != null && layers.iss,
+  );
+
+  const openMap = useCallback(
+    (lat: number, lng: number, zoom: number) => setMapAt({ lat, lng, zoom }),
+    [],
+  );
+  const handleDeepZoom = useCallback(
+    (lat: number, lng: number) => openMap(lat, lng, 5.5),
+    [openMap],
+  );
 
   const toggle = (key: keyof LayerState) =>
     setLayers((l) => ({ ...l, [key]: !l[key] }));
@@ -425,7 +450,47 @@ export default function Globe3DDemo() {
             flyNonce={flyNonce}
           />
         )}
+        {!mapAt && (
+          <DeepZoomTrigger
+            minDistance={2.2}
+            centerRef={centerRef}
+            onDeepZoom={handleDeepZoom}
+          />
+        )}
       </Globe3D>
+
+      <button
+        type="button"
+        onClick={() => {
+          const c = userLoc ?? centerRef.current;
+          openMap(c.lat, c.lng, userLoc ? 8 : 5);
+        }}
+        aria-label="Open deep-zoom map"
+        title="Deep-zoom map"
+        className="pointer-events-auto inset-safe-r absolute top-1/2 z-20 flex -translate-y-1/2 items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-2 text-sm font-semibold text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-neutral-800/80"
+      >
+        <span className="text-base">🗺️</span>
+        <span className="hidden sm:inline">Map</span>
+      </button>
+
+      {mapAt && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-[70] grid place-items-center bg-[#05080f] text-sm text-neutral-300">
+              Loading map…
+            </div>
+          }
+        >
+          <MapView
+            initial={mapAt}
+            flights={flights}
+            ships={ships}
+            iss={issForMap ? { lat: issForMap.lat, lng: issForMap.lng } : null}
+            layers={layers}
+            onClose={() => setMapAt(null)}
+          />
+        </Suspense>
+      )}
 
       {layers.flights && flightsAvailable && selectedFlight && (
         <FlightDetailPanel
