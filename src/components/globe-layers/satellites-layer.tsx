@@ -63,7 +63,12 @@ export interface SatSelection {
 // per constellation and picked by NORAD id for variety. Starlink deliberately
 // avoids its own article, whose lead image is just the round company logo.
 const SAT_WIKI_POOL: Record<string, string[]> = {
-  starlink: ["Communications satellite", "Satellite", "Small satellite", "CubeSat"],
+  starlink: [
+    "Communications satellite",
+    "Satellite",
+    "Small satellite",
+    "CubeSat",
+  ],
   oneweb: ["OneWeb", "Communications satellite", "Small satellite"],
   gps: ["Global Positioning System", "GPS Block IIF"],
 };

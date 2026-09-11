@@ -18,20 +18,27 @@ interface UserMarkerLayerProps {
 export function UserMarkerLayer({ lat, lng, flyNonce }: UserMarkerLayerProps) {
   const radius = useGlobeRadius();
   const camera = useThree((s) => s.camera);
-  const controls = useThree((s) => s.controls) as
-    | { enabled: boolean; update?: () => void }
-    | null;
+  const controls = useThree((s) => s.controls) as {
+    enabled: boolean;
+    update?: () => void;
+  } | null;
   const haloRef = useRef<THREE.Mesh>(null);
-  const anim = useRef<{ from: THREE.Vector3; to: THREE.Vector3; t: number } | null>(
-    null,
-  );
+  const anim = useRef<{
+    from: THREE.Vector3;
+    to: THREE.Vector3;
+    t: number;
+  } | null>(null);
 
   const pos = latLngToVector3(lat, lng, radius * LIFT);
 
   useEffect(() => {
     const dist = camera.position.length();
     const dir = latLngToVector3(lat, lng, 1).normalize();
-    anim.current = { from: camera.position.clone(), to: dir.multiplyScalar(dist), t: 0 };
+    anim.current = {
+      from: camera.position.clone(),
+      to: dir.multiplyScalar(dist),
+      t: 0,
+    };
     if (controls) controls.enabled = false; // don't fight the glide
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flyNonce]);

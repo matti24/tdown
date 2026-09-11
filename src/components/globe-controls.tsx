@@ -61,7 +61,11 @@ interface GlobeControlsProps {
   hidden?: Partial<Record<keyof LayerState, boolean>>;
 }
 
-export function GlobeControls({ layers, onToggle, hidden }: GlobeControlsProps) {
+export function GlobeControls({
+  layers,
+  onToggle,
+  hidden,
+}: GlobeControlsProps) {
   // Start collapsed on phones so the panel doesn't eat the small viewport.
   const [open, setOpen] = useState(
     () => typeof window === "undefined" || window.innerWidth >= 640,

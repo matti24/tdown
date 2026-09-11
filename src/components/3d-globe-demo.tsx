@@ -1,4 +1,12 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { Globe3D } from "@/components/ui/3d-globe";
 import { GlobeControls, type LayerState } from "@/components/globe-controls";
@@ -27,6 +35,12 @@ import { nextIssPasses, type IssPass } from "@/lib/iss-pass";
 import { UserMarkerLayer } from "@/components/globe-layers/user-marker-layer";
 import { usePolling } from "@/hooks/use-live-data";
 import { DeepZoomTrigger } from "@/components/globe-layers/deep-zoom-trigger";
+import { gstime } from "satellite.js";
+import {
+  CONSTELLATIONS,
+  fetchSatellites,
+  propagateSatellite,
+} from "@/lib/satellites";
 
 const MapView = lazy(() => import("@/components/map-view"));
 
@@ -102,6 +116,45 @@ export default function Globe3DDemo() {
     (lat: number, lng: number) => openMap(lat, lng, 5.5),
     [openMap],
   );
+
+  // Satellite ground positions for the map, recomputed while it's open.
+  const { data: satRecords } = usePolling(
+    fetchSatellites,
+    6 * 60 * 60 * 1000,
+    mapAt != null && layers.satellites,
+  );
+  const [satPoints, setSatPoints] = useState<
+    { lat: number; lng: number; name: string; color: string }[]
+  >([]);
+  useEffect(() => {
+    if (!mapAt || !layers.satellites || !satRecords) {
+      setSatPoints([]);
+      return;
+    }
+    const colorByKey = Object.fromEntries(
+      CONSTELLATIONS.map((c) => [c.key, c.color]),
+    );
+    const compute = () => {
+      const now = new Date();
+      const gmst = gstime(now);
+      const pts: { lat: number; lng: number; name: string; color: string }[] =
+        [];
+      for (const rec of satRecords) {
+        const st = propagateSatellite(rec.satrec, now, gmst);
+        if (st)
+          pts.push({
+            lat: st.lat,
+            lng: st.lng,
+            name: rec.name,
+            color: colorByKey[rec.constellation] ?? "#a78bfa",
+          });
+      }
+      setSatPoints(pts);
+    };
+    compute();
+    const id = window.setInterval(compute, 2500);
+    return () => clearInterval(id);
+  }, [mapAt, layers.satellites, satRecords]);
 
   const toggle = (key: keyof LayerState) =>
     setLayers((l) => ({ ...l, [key]: !l[key] }));
@@ -327,7 +380,8 @@ export default function Globe3DDemo() {
   }, [userLoc]);
 
   return (
-    <div className="relative h-full w-full">
+    <>
+      <div className={`relative h-full w-full${mapAt ? " hidden" : ""}`}>
       <GlobeControls
         layers={layers}
         onToggle={toggle}
@@ -434,7 +488,7 @@ export default function Globe3DDemo() {
             }
           />
         )}
-        {layers.satellites && (
+        {layers.satellites && !mapAt && (
           <SatellitesLayer
             onStats={handleSatStats}
             onSelect={handleSelectSat}
@@ -473,25 +527,6 @@ export default function Globe3DDemo() {
         <span className="hidden sm:inline">Map</span>
       </button>
 
-      {mapAt && (
-        <Suspense
-          fallback={
-            <div className="fixed inset-0 z-[70] grid place-items-center bg-[#05080f] text-sm text-neutral-300">
-              Loading map…
-            </div>
-          }
-        >
-          <MapView
-            initial={mapAt}
-            flights={flights}
-            ships={ships}
-            iss={issForMap ? { lat: issForMap.lat, lng: issForMap.lng } : null}
-            layers={layers}
-            onClose={() => setMapAt(null)}
-          />
-        </Suspense>
-      )}
-
       {layers.flights && flightsAvailable && selectedFlight && (
         <FlightDetailPanel
           flight={selectedFlight}
@@ -511,7 +546,28 @@ export default function Globe3DDemo() {
           onClose={() => setSelectedInfo(null)}
         />
       )}
-    </div>
+      </div>
+
+      {mapAt && (
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-[70] grid place-items-center bg-[#05080f] text-sm text-neutral-300">
+              Loading map…
+            </div>
+          }
+        >
+          <MapView
+            initial={mapAt}
+            flights={flights}
+            ships={ships}
+            satellites={satPoints}
+            iss={issForMap ? { lat: issForMap.lat, lng: issForMap.lng } : null}
+            layers={layers}
+            onClose={() => setMapAt(null)}
+          />
+        </Suspense>
+      )}
+    </>
   );
 }
 
@@ -839,7 +895,8 @@ function IssLiveStream() {
 
   useEffect(() => {
     if (!expanded) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setExpanded(false);
+    const onKey = (e: KeyboardEvent) =>
+      e.key === "Escape" && setExpanded(false);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [expanded]);
@@ -969,7 +1026,11 @@ function MaximizeIcon() {
 
 function PlayIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 translate-x-px" fill="currentColor">
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 translate-x-px"
+      fill="currentColor"
+    >
       <path d="M8 5v14l11-7z" />
     </svg>
   );
@@ -1052,53 +1113,53 @@ function LocationCard({
       {issEnabled ? (
         <>
           <div className="mt-2.5 rounded-xl bg-white/5 p-2.5">
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-sky-300">
-          <span className="text-sm">🛰️</span> Next ISS pass
-        </div>
-        {passesLoading ? (
-          <div className="mt-1 text-xs text-neutral-500">Calculating…</div>
-        ) : next ? (
-          <>
-            <div className="mt-0.5 text-lg font-semibold leading-tight text-white">
-              {formatCountdown(next.start.getTime() - now)}
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-sky-300">
+              <span className="text-sm">🛰️</span> Next ISS pass
             </div>
-            <div className="text-[11px] text-neutral-400">
-              max {Math.round(next.maxElevationDeg)}° ·{" "}
-              {Math.round(next.durationSec / 60)} min ·{" "}
-              {next.start.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </div>
-          </>
-        ) : (
-          <div className="mt-1 text-xs text-neutral-500">
-            No pass in the next 48 h
+            {passesLoading ? (
+              <div className="mt-1 text-xs text-neutral-500">Calculating…</div>
+            ) : next ? (
+              <>
+                <div className="mt-0.5 text-lg font-semibold leading-tight text-white">
+                  {formatCountdown(next.start.getTime() - now)}
+                </div>
+                <div className="text-[11px] text-neutral-400">
+                  max {Math.round(next.maxElevationDeg)}° ·{" "}
+                  {Math.round(next.durationSec / 60)} min ·{" "}
+                  {next.start.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="mt-1 text-xs text-neutral-500">
+                No pass in the next 48 h
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {passes && passes.length > 1 && (
-        <div className="mt-2 space-y-1">
-          {passes.slice(1, 3).map((p) => (
-            <div
-              key={p.start.getTime()}
-              className="flex items-center justify-between text-[11px] text-neutral-400"
-            >
-              <span>
-                {p.start.toLocaleString([], {
-                  weekday: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-              <span className="text-neutral-500">
-                max {Math.round(p.maxElevationDeg)}°
-              </span>
+          {passes && passes.length > 1 && (
+            <div className="mt-2 space-y-1">
+              {passes.slice(1, 3).map((p) => (
+                <div
+                  key={p.start.getTime()}
+                  className="flex items-center justify-between text-[11px] text-neutral-400"
+                >
+                  <span>
+                    {p.start.toLocaleString([], {
+                      weekday: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <span className="text-neutral-500">
+                    max {Math.round(p.maxElevationDeg)}°
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
         </>
       ) : (
         <p className="mt-2.5 text-[11px] text-neutral-500">
