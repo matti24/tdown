@@ -19,6 +19,9 @@ export interface MapViewProps {
   satellites: MapSat[];
   iss: { lat: number; lng: number } | null;
   layers: LayerState;
+  onToggle: (key: keyof LayerState) => void;
+  userLoc: { lat: number; lng: number } | null;
+  onLocate: () => void;
   onClose: () => void;
 }
 
@@ -112,16 +115,22 @@ export default function MapView({
   satellites,
   iss,
   layers,
+  onToggle,
+  userLoc,
+  onLocate,
   onClose,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const renderRef = useRef<() => void>(() => {});
+  const pendingLocate = useRef(false);
 
-  const dataRef = useRef({ flights, ships, satellites, iss, layers });
-  dataRef.current = { flights, ships, satellites, iss, layers };
+  const dataRef = useRef({ flights, ships, satellites, iss, layers, userLoc });
+  dataRef.current = { flights, ships, satellites, iss, layers, userLoc };
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+  const onLocateRef = useRef(onLocate);
+  onLocateRef.current = onLocate;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -140,6 +149,30 @@ export default function MapView({
       attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics",
     }).addTo(map);
     L.tileLayer(ESRI_REFERENCE, { maxZoom: 19, opacity: 0.9 }).addTo(map);
+
+    const locateNow = () => {
+      const d = dataRef.current;
+      if (d.userLoc) {
+        map.flyTo([d.userLoc.lat, d.userLoc.lng], Math.max(map.getZoom(), 11), {
+          duration: 0.8,
+        });
+      } else {
+        pendingLocate.current = true;
+        onLocateRef.current();
+      }
+    };
+    const locate = new L.Control({ position: "bottomright" });
+    locate.onAdd = () => {
+      const div = L.DomUtil.create("div", "leaflet-bar tdm-locate");
+      const a = L.DomUtil.create("a", "", div) as HTMLAnchorElement;
+      a.href = "#";
+      a.title = "My location";
+      a.setAttribute("role", "button");
+      a.innerHTML = "📍";
+      L.DomEvent.on(a, "click", L.DomEvent.stop).on(a, "click", locateNow);
+      return div;
+    };
+    locate.addTo(map);
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
     const groups: Record<TKind, L.LayerGroup> = {
@@ -195,7 +228,7 @@ export default function MapView({
             zIndexOffset: z ?? 0,
           }) as TMarker;
           mk._tk = k;
-          mk.bindPopup(popup(it));
+          mk.bindPopup(popup(it), { autoPan: false });
           mk.addTo(groups[kind]);
           s.set(key, mk);
         }
@@ -208,46 +241,52 @@ export default function MapView({
       }
     }
 
+    let rendering = false;
     const render = () => {
-      if (!mapRef.current) return;
-      const d = dataRef.current;
-      sync(
-        "satellites",
-        d.layers.satellites ? d.satellites : [],
-        (s) => s.name,
-        (s) => [s.lat, s.lng],
-        (s) => s.color,
-        (s) => satIcon(s.color),
-        (s) => `<strong>${escapeHtml(s.name)}</strong><br>Satellite`,
-      );
-      sync(
-        "ships",
-        d.layers.ships ? d.ships : [],
-        (s) => "s" + s.mmsi,
-        (s) => [s.lat, s.lng],
-        () => "ship",
-        () => shipIcon,
-        (s) => shipPopup(s),
-      );
-      sync(
-        "flights",
-        d.layers.flights ? d.flights : [],
-        (f) => "f" + (f.icao24 || f.callsign),
-        (f) => [f.lat, f.lng],
-        (f) => "p" + Math.round(f.trackDeg),
-        (f) => planeIcon(f.trackDeg),
-        (f) => flightPopup(f),
-      );
-      sync(
-        "iss",
-        d.layers.iss && d.iss ? [d.iss] : [],
-        () => "iss",
-        (p) => [p.lat, p.lng],
-        () => "iss",
-        () => issIcon,
-        () => "<strong>ISS</strong><br>International Space Station",
-        1000,
-      );
+      if (rendering || !mapRef.current) return;
+      rendering = true;
+      try {
+        const d = dataRef.current;
+        sync(
+          "satellites",
+          d.layers.satellites ? d.satellites : [],
+          (s) => s.name,
+          (s) => [s.lat, s.lng],
+          (s) => s.color,
+          (s) => satIcon(s.color),
+          (s) => `<strong>${escapeHtml(s.name)}</strong><br>Satellite`,
+        );
+        sync(
+          "ships",
+          d.layers.ships ? d.ships : [],
+          (s) => "s" + s.mmsi,
+          (s) => [s.lat, s.lng],
+          () => "ship",
+          () => shipIcon,
+          (s) => shipPopup(s),
+        );
+        sync(
+          "flights",
+          d.layers.flights ? d.flights : [],
+          (f) => "f" + (f.icao24 || f.callsign),
+          (f) => [f.lat, f.lng],
+          (f) => "p" + Math.round(f.trackDeg),
+          (f) => planeIcon(f.trackDeg),
+          (f) => flightPopup(f),
+        );
+        sync(
+          "iss",
+          d.layers.iss && d.iss ? [d.iss] : [],
+          () => "iss",
+          (p) => [p.lat, p.lng],
+          () => "iss",
+          () => issIcon,
+          () => "<strong>ISS</strong><br>International Space Station",
+          1000,
+        );
+      } finally {
+        rendering = false;
+      }
     };
     renderRef.current = render;
 
@@ -276,9 +315,66 @@ export default function MapView({
     renderRef.current();
   }, [flights, ships, satellites, iss, layers]);
 
+  // Fly to the user's location once it resolves after a locate request.
+  useEffect(() => {
+    if (pendingLocate.current && userLoc && mapRef.current) {
+      pendingLocate.current = false;
+      mapRef.current.flyTo(
+        [userLoc.lat, userLoc.lng],
+        Math.max(mapRef.current.getZoom(), 11),
+        { duration: 0.8 },
+      );
+    }
+  }, [userLoc]);
+
+  const pills: {
+    key: keyof LayerState;
+    icon: string;
+    text: string | null;
+    on: boolean;
+    cls: string;
+  }[] = [
+    {
+      key: "flights",
+      icon: "✈️",
+      text: layers.flights ? flights.length.toLocaleString("en-US") : null,
+      on: layers.flights,
+      cls: "border-amber-400/40 bg-amber-400/20 text-amber-50",
+    },
+    {
+      key: "ships",
+      icon: "🚢",
+      text: layers.ships ? ships.length.toLocaleString("en-US") : null,
+      on: layers.ships,
+      cls: "border-cyan-400/40 bg-cyan-400/20 text-cyan-50",
+    },
+    {
+      key: "satellites",
+      icon: "📡",
+      text: layers.satellites ? satellites.length.toLocaleString("en-US") : null,
+      on: layers.satellites,
+      cls: "border-violet-400/40 bg-violet-400/20 text-violet-50",
+    },
+    {
+      key: "iss",
+      icon: "🛰️",
+      text: "ISS",
+      on: layers.iss,
+      cls: "border-sky-400/40 bg-sky-400/20 text-sky-50",
+    },
+  ];
+
   return (
     <div className="fixed inset-0 z-[70] bg-[#05080f]">
-      <style>{`.tdm-ic{background:none;border:none;line-height:0}.tdm-ic>div{line-height:0}`}</style>
+      <style>{`
+        .tdm-ic{background:none;border:none;line-height:0}
+        .tdm-ic>div{line-height:0}
+        .leaflet-bar a{background:rgba(23,23,23,.92);color:#e5e5e5;border-bottom-color:rgba(255,255,255,.12)}
+        .leaflet-bar a:hover{background:#262626;color:#fff}
+        .tdm-locate a{font-size:15px;line-height:30px;text-align:center}
+        .leaflet-control-attribution{background:rgba(10,10,12,.72)!important;color:#8b8f98!important}
+        .leaflet-control-attribution a{color:#9aa0aa!important}
+      `}</style>
       <div ref={containerRef} className="h-full w-full" />
 
       <button
@@ -286,22 +382,29 @@ export default function MapView({
         onClick={onClose}
         className="inset-safe-t inset-safe-l absolute z-[1100] flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/85 px-3.5 py-2 text-sm font-semibold text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-neutral-800/90"
       >
-        <span aria-hidden>&larr;</span> Globe
+        <span aria-hidden>&larr;</span>
+        <span className="hidden sm:inline">Globe</span>
       </button>
 
-      <div className="inset-safe-t absolute left-1/2 z-[1100] flex max-w-[calc(100vw-1rem)] -translate-x-1/2 flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-2xl border border-white/10 bg-neutral-900/80 px-3.5 py-1.5 text-[11px] font-medium text-neutral-200 shadow-2xl backdrop-blur-md">
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Flights
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" /> Ships
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-violet-400" /> Satellites
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-sky-400" /> ISS
-        </span>
+      {/* Top-right: toggle layers + live counts (opposite corner to the back
+          button, so they never overlap). */}
+      <div className="inset-safe-t inset-safe-r absolute z-[1100] flex max-w-[72vw] flex-wrap items-start justify-end gap-1.5">
+        {pills.map((p) => (
+          <button
+            key={p.key}
+            type="button"
+            onClick={() => onToggle(p.key)}
+            aria-pressed={p.on}
+            className={`pointer-events-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-lg backdrop-blur-md transition-colors ${
+              p.on
+                ? p.cls
+                : "border-white/10 bg-neutral-900/70 text-neutral-500 hover:bg-neutral-800/80"
+            }`}
+          >
+            <span className={p.on ? "" : "opacity-50 grayscale"}>{p.icon}</span>
+            {p.text && <span className="tabular-nums">{p.text}</span>}
+          </button>
+        ))}
       </div>
     </div>
   );

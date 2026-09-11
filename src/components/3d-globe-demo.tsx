@@ -389,6 +389,17 @@ export default function Globe3DDemo() {
       />
 
       <div className="pointer-events-none absolute inset-safe-r inset-safe-t z-20 flex flex-col items-end gap-1.5">
+        <button
+          type="button"
+          onClick={() => {
+            const c = userLoc ?? centerRef.current;
+            openMap(c.lat, c.lng, userLoc ? 8 : 5);
+          }}
+          aria-label="Open map view"
+          className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-2 text-sm font-semibold text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-neutral-800/80"
+        >
+          <span className="text-base">🗺️</span> Map view
+        </button>
         <LocationCard
           loc={userLoc}
           place={place}
@@ -513,20 +524,6 @@ export default function Globe3DDemo() {
         )}
       </Globe3D>
 
-      <button
-        type="button"
-        onClick={() => {
-          const c = userLoc ?? centerRef.current;
-          openMap(c.lat, c.lng, userLoc ? 8 : 5);
-        }}
-        aria-label="Open deep-zoom map"
-        title="Deep-zoom map"
-        className="pointer-events-auto inset-safe-r absolute top-1/2 z-20 flex -translate-y-1/2 items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-2 text-sm font-semibold text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-neutral-800/80"
-      >
-        <span className="text-base">🗺️</span>
-        <span className="hidden sm:inline">Map</span>
-      </button>
-
       {layers.flights && flightsAvailable && selectedFlight && (
         <FlightDetailPanel
           flight={selectedFlight}
@@ -563,6 +560,9 @@ export default function Globe3DDemo() {
             satellites={satPoints}
             iss={issForMap ? { lat: issForMap.lat, lng: issForMap.lng } : null}
             layers={layers}
+            onToggle={toggle}
+            userLoc={userLoc}
+            onLocate={handleLocate}
             onClose={() => setMapAt(null)}
           />
         </Suspense>
