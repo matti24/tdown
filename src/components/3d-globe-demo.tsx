@@ -396,9 +396,9 @@ export default function Globe3DDemo() {
             openMap(c.lat, c.lng, userLoc ? 8 : 5);
           }}
           aria-label="Open map view"
-          className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-2 text-sm font-semibold text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-neutral-800/80"
+          className="panel pointer-events-auto flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:border-neutral-500 hover:bg-[#1f1f1f]"
         >
-          <span className="text-base">🗺️</span> Map view
+          Map view
         </button>
         <LocationCard
           loc={userLoc}
@@ -413,23 +413,23 @@ export default function Globe3DDemo() {
           issEnabled={layers.iss}
         />
         {layers.flights && flightsAvailable && flights.length > 0 && (
-          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md">
-            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-            <span className="text-sm font-semibold text-white">
-              ✈️ {flights.length.toLocaleString("en-US")}
+          <div className="panel flex items-center gap-2 px-2.5 py-1">
+            <span className="h-2 w-2 rounded-[1px] bg-amber-400" />
+            <span className="text-sm font-medium tabular-nums text-neutral-100">
+              {flights.length.toLocaleString("en-US")}
             </span>
-            <span className="hidden text-[11px] text-neutral-400 sm:inline">
+            <span className="hidden text-xs text-neutral-500 sm:inline">
               flights live
             </span>
           </div>
         )}
         {layers.ships && shipsAvailable && ships.length > 0 && (
-          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 shadow-2xl backdrop-blur-md">
-            <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" />
-            <span className="text-sm font-semibold text-white">
-              🚢 {ships.length.toLocaleString("en-US")}
+          <div className="panel flex items-center gap-2 px-2.5 py-1">
+            <span className="h-2 w-2 rounded-[1px] bg-cyan-400" />
+            <span className="text-sm font-medium tabular-nums text-neutral-100">
+              {ships.length.toLocaleString("en-US")}
             </span>
-            <span className="hidden text-[11px] text-neutral-400 sm:inline">
+            <span className="hidden text-xs text-neutral-500 sm:inline">
               ships live
             </span>
           </div>
@@ -437,12 +437,12 @@ export default function Globe3DDemo() {
       </div>
 
       {layers.satellites && satStats && (
-        <div className="pointer-events-none absolute inset-safe-b left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-col items-center gap-1 rounded-2xl border border-white/10 bg-neutral-900/70 px-3 py-1.5 text-center shadow-2xl backdrop-blur-md sm:px-3.5 sm:py-2">
+        <div className="panel pointer-events-none absolute inset-safe-b left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 flex-col items-center gap-1 px-3 py-1.5 text-center sm:px-3.5">
           <div className="flex items-baseline gap-2 whitespace-nowrap">
-            <span className="text-sm font-semibold text-white">
-              📡 {satStats.total.toLocaleString("en-US")} satellites live
+            <span className="text-sm font-medium tabular-nums text-neutral-100">
+              {satStats.total.toLocaleString("en-US")} satellites live
             </span>
-            <span className="text-xs text-sky-300/80">
+            <span className="text-xs tabular-nums text-neutral-500">
               ~{Math.round(satStats.avgSpeedKmh).toLocaleString("en-US")} km/h
             </span>
           </div>
@@ -450,11 +450,11 @@ export default function Globe3DDemo() {
             {satStats.counts.map((c) => (
               <span key={c.key} className="flex items-center gap-1.5">
                 <span
-                  className="h-2.5 w-2.5 rounded-full"
+                  className="h-2 w-2 rounded-[1px]"
                   style={{ backgroundColor: c.color }}
                 />
                 {c.label}
-                <span className="text-neutral-500">
+                <span className="tabular-nums text-neutral-500">
                   {c.count.toLocaleString("en-US")}
                 </span>
               </span>
@@ -595,121 +595,90 @@ function FlightDetailPanel({
   const model =
     [info?.manufacturer, info?.model].filter(Boolean).join(" ") || fallback;
   return (
-    <div className="absolute inset-safe-b inset-safe-l z-20 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-amber-400/30 bg-neutral-900/80 p-3.5 shadow-2xl backdrop-blur-md">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-400/20 text-amber-300">
-            ✈️
-          </span>
-          <div>
-            <div className="text-sm font-semibold leading-tight text-white">
-              {flight.callsign || "Unknown"}
-            </div>
-            <div className="text-[11px] leading-tight text-neutral-400">
-              {airline}
-            </div>
+    <div className="panel absolute inset-safe-b inset-safe-l z-20 w-64 max-w-[calc(100vw-1.5rem)] overflow-hidden">
+      <div className="panel-head flex items-start justify-between gap-2 px-3 py-2">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold leading-tight text-neutral-100">
+            {flight.callsign || "Unknown"}
+          </div>
+          <div className="truncate text-[11px] leading-tight text-neutral-400">
+            {airline}
           </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="-mr-1 -mt-1 rounded-lg px-1.5 py-0.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+          className="panel-x -mr-1"
           aria-label="Stop tracking"
         >
-          ✕
+          <CloseIcon />
         </button>
       </div>
 
-      {info?.photo && (
-        <img
-          src={info.photo}
-          alt={model}
-          loading="lazy"
-          className="mt-3 h-24 w-full rounded-lg object-cover"
-        />
-      )}
+      <div className="px-3 pb-3">
+        {info?.photo && (
+          <img
+            src={info.photo}
+            alt={model}
+            loading="lazy"
+            className="mt-3 h-24 w-full rounded-sm object-cover"
+          />
+        )}
 
-      <div className="mt-3 flex items-center gap-2 text-xs">
-        <div className="flex min-w-0 flex-col">
-          <span className="text-sm font-semibold text-white">
-            {info?.originIata || "—"}
-          </span>
-          <span className="truncate text-[10px] text-neutral-500">
-            {info?.originCity || (loading ? "…" : "Origin")}
-          </span>
+        <div className="mt-3 flex items-center gap-2 text-xs">
+          <div className="flex min-w-0 flex-col">
+            <span className="text-sm font-semibold text-neutral-100">
+              {info?.originIata || "—"}
+            </span>
+            <span className="truncate text-[10px] text-neutral-500">
+              {info?.originCity || (loading ? "…" : "Origin")}
+            </span>
+          </div>
+          <span className="h-px flex-1 bg-neutral-700" />
+          <div className="flex min-w-0 flex-col items-end">
+            <span className="text-sm font-semibold text-neutral-100">
+              {info?.destIata || "—"}
+            </span>
+            <span className="truncate text-[10px] text-neutral-500">
+              {info?.destCity || (loading ? "…" : "Destination")}
+            </span>
+          </div>
         </div>
-        <div className="flex flex-1 items-center gap-1 text-amber-300/70">
-          <span className="h-px flex-1 bg-gradient-to-r from-transparent to-amber-300/50" />
-          <span>✈</span>
-          <span className="h-px flex-1 bg-gradient-to-r from-amber-300/50 to-transparent" />
-        </div>
-        <div className="flex min-w-0 flex-col items-end">
-          <span className="text-sm font-semibold text-white">
-            {info?.destIata || "—"}
-          </span>
-          <span className="truncate text-[10px] text-neutral-500">
-            {info?.destCity || (loading ? "…" : "Destination")}
-          </span>
-        </div>
-      </div>
 
-      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-        <div className="col-span-2">
-          <dt className="text-neutral-500">Model</dt>
-          <dd className="font-medium text-neutral-200">{model}</dd>
-        </div>
-        <div>
-          <dt className="text-neutral-500">Speed</dt>
-          <dd className="font-medium text-neutral-200">
-            {speedKmh.toLocaleString("en-US")} km/h
-          </dd>
-        </div>
-        <div>
-          <dt className="text-neutral-500">Altitude</dt>
-          <dd className="font-medium text-neutral-200">
-            {flight.altFt > 0
-              ? `${flight.altFt.toLocaleString("en-US")} ft`
-              : "on ground"}
-          </dd>
-        </div>
-        <div className="col-span-2">
-          <dt className="text-neutral-500">Vertical</dt>
-          <dd className="font-medium text-neutral-200">{trend}</dd>
-        </div>
-      </dl>
+        <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-neutral-800 pt-2.5 text-xs">
+          <div className="col-span-2">
+            <dt className="text-[10px] text-neutral-500">Model</dt>
+            <dd className="text-neutral-200">{model}</dd>
+          </div>
+          <div>
+            <dt className="text-[10px] text-neutral-500">Speed</dt>
+            <dd className="tabular-nums text-neutral-200">
+              {speedKmh.toLocaleString("en-US")} km/h
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[10px] text-neutral-500">Altitude</dt>
+            <dd className="tabular-nums text-neutral-200">
+              {flight.altFt > 0
+                ? `${flight.altFt.toLocaleString("en-US")} ft`
+                : "on ground"}
+            </dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-[10px] text-neutral-500">Vertical</dt>
+            <dd className="text-neutral-200">{trend}</dd>
+          </div>
+        </dl>
 
-      <div className="mt-3 flex items-center gap-1.5 text-[11px] text-amber-300/80">
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-400" />
-        </span>
-        Rotate freely – follow the flight path
+        <p className="mt-3 text-[11px] text-neutral-500">
+          Rotate freely – follow the flight path
+        </p>
       </div>
     </div>
   );
 }
 
-type PanelAccent = "cyan" | "violet" | "sky";
-
-const PANEL_ACCENT: Record<PanelAccent, string> = {
-  cyan: "border-cyan-400/30",
-  violet: "border-violet-400/30",
-  sky: "border-sky-400/30",
-};
-const PANEL_CHIP: Record<PanelAccent, string> = {
-  cyan: "bg-cyan-400/20 text-cyan-200",
-  violet: "bg-violet-400/20 text-violet-200",
-  sky: "bg-sky-400/20 text-sky-200",
-};
-const PANEL_DOT: Record<PanelAccent, string> = {
-  cyan: "bg-cyan-400",
-  violet: "bg-violet-400",
-  sky: "bg-sky-400",
-};
-
 function panelMeta(info: SelInfo): {
-  emoji: string;
-  accent: PanelAccent;
   title: string;
   subtitle: string;
   note: string;
@@ -718,8 +687,6 @@ function panelMeta(info: SelInfo): {
   if (info.kind === "iss") {
     const d = info.iss;
     return {
-      emoji: "🛰️",
-      accent: "sky",
       title: "ISS",
       subtitle: "International Space Station",
       note: "Live position · ~16 orbits/day",
@@ -734,8 +701,6 @@ function panelMeta(info: SelInfo): {
   if (info.kind === "sat") {
     const s = info.sat;
     return {
-      emoji: "📡",
-      accent: "violet",
       title: s.name,
       subtitle: s.purpose,
       note: "Line = last 90 minutes of orbit",
@@ -765,8 +730,6 @@ function panelMeta(info: SelInfo): {
   if (sh.imo) rows.push(["IMO", String(sh.imo)]);
   rows.push(["MMSI", String(sh.mmsi)]);
   return {
-    emoji: "🚢",
-    accent: "cyan",
     title: sh.name || `MMSI ${sh.mmsi}`,
     subtitle: cat.name,
     note: sh.speedKn < 0.5 ? "Live position · at anchor" : "Live position",
@@ -799,79 +762,58 @@ function InfoDetailPanel({
   const imgUrl = realPhoto ?? (stillLoadingShip ? undefined : wiki?.image);
   const imgLoading = wikiLoading || stillLoadingShip;
   return (
-    <div
-      className={`absolute inset-safe-b inset-safe-l z-20 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border ${PANEL_ACCENT[m.accent]} bg-neutral-900/80 p-3.5 shadow-2xl backdrop-blur-md`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${PANEL_CHIP[m.accent]}`}
-          >
-            {m.emoji}
-          </span>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold leading-tight text-white">
-              {m.title}
-            </div>
-            <div className="truncate text-[11px] leading-tight text-neutral-400">
-              {m.subtitle}
-            </div>
+    <div className="panel absolute inset-safe-b inset-safe-l z-20 w-64 max-w-[calc(100vw-1.5rem)] overflow-hidden">
+      <div className="panel-head flex items-start justify-between gap-2 px-3 py-2">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold leading-tight text-neutral-100">
+            {m.title}
+          </div>
+          <div className="truncate text-[11px] leading-tight text-neutral-400">
+            {m.subtitle}
           </div>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="-mr-1 -mt-1 shrink-0 rounded-lg px-1.5 py-0.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+          className="panel-x -mr-1 shrink-0"
           aria-label="Close"
         >
-          ✕
+          <CloseIcon />
         </button>
       </div>
 
-      {isIss ? (
-        <IssLiveStream />
-      ) : imgUrl ? (
-        <img
-          src={imgUrl}
-          alt={m.title}
-          loading="lazy"
-          className="mt-3 h-28 w-full rounded-lg object-cover"
-        />
-      ) : (
-        <div className="mt-3 flex h-28 w-full items-center justify-center rounded-lg bg-white/5 text-3xl">
-          {imgLoading ? (
-            <span className="text-xs text-neutral-500">loading…</span>
-          ) : (
-            m.emoji
-          )}
-        </div>
-      )}
-
-      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-        {m.rows.map(([label, value]) => (
-          <div key={label}>
-            <dt className="text-neutral-500">{label}</dt>
-            <dd className="font-medium text-neutral-200">{value}</dd>
+      <div className="px-3 pb-3">
+        {isIss ? (
+          <IssLiveStream />
+        ) : imgUrl ? (
+          <img
+            src={imgUrl}
+            alt={m.title}
+            loading="lazy"
+            className="mt-3 h-28 w-full rounded-sm object-cover"
+          />
+        ) : (
+          <div className="mt-3 flex h-28 w-full items-center justify-center rounded-sm bg-neutral-800/60 text-xs text-neutral-500">
+            {imgLoading ? "loading…" : "No image"}
           </div>
-        ))}
-      </dl>
+        )}
 
-      {wiki?.extract && (
-        <p className="mt-3 line-clamp-4 text-[11px] leading-snug text-neutral-400">
-          {wiki.extract}
-        </p>
-      )}
+        <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-neutral-800 pt-2.5 text-xs">
+          {m.rows.map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-[10px] text-neutral-500">{label}</dt>
+              <dd className="tabular-nums text-neutral-200">{value}</dd>
+            </div>
+          ))}
+        </dl>
 
-      <div className="mt-3 flex items-center gap-1.5 text-[11px] text-neutral-400">
-        <span className="relative flex h-2 w-2">
-          <span
-            className={`absolute inline-flex h-full w-full animate-ping rounded-full ${PANEL_DOT[m.accent]} opacity-75`}
-          />
-          <span
-            className={`relative inline-flex h-2 w-2 rounded-full ${PANEL_DOT[m.accent]}`}
-          />
-        </span>
-        {m.note}
+        {wiki?.extract && (
+          <p className="mt-3 line-clamp-4 text-[11px] leading-snug text-neutral-400">
+            {wiki.extract}
+          </p>
+        )}
+
+        <p className="mt-3 text-[11px] text-neutral-500">{m.note}</p>
       </div>
     </div>
   );
@@ -903,7 +845,7 @@ function IssLiveStream() {
 
   return (
     <>
-      <div className="relative mt-3 aspect-video w-full overflow-hidden rounded-lg bg-black ring-1 ring-white/10">
+      <div className="relative mt-3 aspect-video w-full overflow-hidden rounded-sm border border-neutral-800 bg-black">
         {playing && !expanded ? (
           <>
             <iframe
@@ -931,16 +873,16 @@ function IssLiveStream() {
               src={ISS_THUMB}
               alt=""
               loading="lazy"
-              className="h-full w-full object-cover opacity-90 transition-opacity group-hover:opacity-100"
+              className="h-full w-full object-cover opacity-90 group-hover:opacity-100"
             />
             <span className="absolute inset-0 flex items-center justify-center">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white shadow-lg transition-transform group-hover:scale-110">
+              <span className="flex h-8 w-10 items-center justify-center rounded-sm bg-red-600 text-white group-hover:bg-red-500">
                 <PlayIcon />
               </span>
             </span>
           </button>
         )}
-        <span className="pointer-events-none absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
+        <span className="pointer-events-none absolute left-1.5 top-1.5 flex items-center gap-1 rounded-sm bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-white">
           <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
           Live
         </span>
@@ -948,7 +890,7 @@ function IssLiveStream() {
           type="button"
           onClick={() => setExpanded(true)}
           aria-label="Enlarge live stream"
-          className="absolute bottom-1.5 right-1.5 rounded-md bg-black/55 p-1 text-white transition-colors hover:bg-black/80"
+          className="absolute bottom-1.5 right-1.5 rounded-sm bg-black/70 p-1 text-white hover:bg-black/90"
         >
           <MaximizeIcon />
         </button>
@@ -970,12 +912,12 @@ function IssTheater({ onClose }: { onClose: () => void }) {
       aria-modal="true"
       aria-label="ISS live stream"
       onClick={onClose}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-3 sm:p-6"
     >
       <div className="w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-white">
-            <span className="flex shrink-0 items-center gap-1.5 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+            <span className="flex shrink-0 items-center gap-1.5 rounded-sm bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase">
               <span className="h-1.5 w-1.5 rounded-full bg-white" />
               Live
             </span>
@@ -985,12 +927,12 @@ function IssTheater({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="shrink-0 rounded-lg px-2 py-1 text-lg leading-none text-neutral-300 transition-colors hover:bg-white/10 hover:text-white"
+            className="panel-x shrink-0"
           >
-            ✕
+            <CloseIcon />
           </button>
         </div>
-        <div className="aspect-video w-full overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-white/10">
+        <div className="aspect-video w-full overflow-hidden rounded-sm bg-black">
           <iframe
             src={ISS_STREAM_SRC}
             title="ISS live stream"
@@ -1020,6 +962,21 @@ function MaximizeIcon() {
       strokeLinejoin="round"
     >
       <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   );
 }
@@ -1075,97 +1032,93 @@ function LocationCard({
         type="button"
         onClick={onLocate}
         disabled={locating}
-        className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-emerald-400/30 bg-neutral-900/70 px-3 py-1.5 text-sm font-semibold text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-neutral-800/80 disabled:opacity-70"
+        className="panel pointer-events-auto flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:border-neutral-500 hover:bg-[#1f1f1f] disabled:opacity-70"
       >
-        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-        {locating ? "Locating…" : error ? error : "📍 My location"}
+        {locating ? "Locating…" : error ? error : "My location"}
       </button>
     );
   }
 
   const next = passes?.[0];
   return (
-    <div className="pointer-events-auto w-56 max-w-[46vw] rounded-2xl border border-emerald-400/30 bg-neutral-900/80 p-3 shadow-2xl backdrop-blur-md sm:max-w-[calc(100vw-1.5rem)]">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400/20 text-emerald-200">
-            📍
-          </span>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold leading-tight text-white">
-              {place || "Your location"}
-            </div>
-            <div className="truncate text-[10px] leading-tight text-neutral-500">
-              {loc.lat.toFixed(2)}°, {loc.lng.toFixed(2)}°
-            </div>
+    <div className="panel pointer-events-auto w-56 max-w-[46vw] overflow-hidden sm:max-w-[calc(100vw-1.5rem)]">
+      <div className="panel-head flex items-start justify-between gap-2 px-3 py-2">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold leading-tight text-neutral-100">
+            {place || "Your location"}
+          </div>
+          <div className="truncate text-[10px] tabular-nums leading-tight text-neutral-500">
+            {loc.lat.toFixed(2)}°, {loc.lng.toFixed(2)}°
           </div>
         </div>
         <button
           type="button"
           onClick={onClear}
           aria-label="Clear location"
-          className="-mr-1 -mt-1 shrink-0 rounded-lg px-1.5 py-0.5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+          className="panel-x -mr-1 shrink-0"
         >
-          ✕
+          <CloseIcon />
         </button>
       </div>
 
-      {issEnabled ? (
-        <>
-          <div className="mt-2.5 rounded-xl bg-white/5 p-2.5">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-sky-300">
-              <span className="text-sm">🛰️</span> Next ISS pass
-            </div>
-            {passesLoading ? (
-              <div className="mt-1 text-xs text-neutral-500">Calculating…</div>
-            ) : next ? (
-              <>
-                <div className="mt-0.5 text-lg font-semibold leading-tight text-white">
-                  {formatCountdown(next.start.getTime() - now)}
-                </div>
-                <div className="text-[11px] text-neutral-400">
-                  max {Math.round(next.maxElevationDeg)}° ·{" "}
-                  {Math.round(next.durationSec / 60)} min ·{" "}
-                  {next.start.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-              </>
-            ) : (
-              <div className="mt-1 text-xs text-neutral-500">
-                No pass in the next 48 h
+      <div className="px-3 pb-3">
+        {issEnabled ? (
+          <>
+            <div className="mt-2.5">
+              <div className="text-[11px] text-neutral-500">
+                Next ISS pass
               </div>
-            )}
-          </div>
-
-          {passes && passes.length > 1 && (
-            <div className="mt-2 space-y-1">
-              {passes.slice(1, 3).map((p) => (
-                <div
-                  key={p.start.getTime()}
-                  className="flex items-center justify-between text-[11px] text-neutral-400"
-                >
-                  <span>
-                    {p.start.toLocaleString([], {
-                      weekday: "short",
+              {passesLoading ? (
+                <div className="mt-1 text-xs text-neutral-500">Calculating…</div>
+              ) : next ? (
+                <>
+                  <div className="mt-0.5 text-lg font-semibold leading-tight text-neutral-100">
+                    {formatCountdown(next.start.getTime() - now)}
+                  </div>
+                  <div className="text-[11px] text-neutral-400">
+                    max {Math.round(next.maxElevationDeg)}° ·{" "}
+                    {Math.round(next.durationSec / 60)} min ·{" "}
+                    {next.start.toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
-                  </span>
-                  <span className="text-neutral-500">
-                    max {Math.round(p.maxElevationDeg)}°
-                  </span>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-1 text-xs text-neutral-500">
+                  No pass in the next 48 h
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </>
-      ) : (
-        <p className="mt-2.5 text-[11px] text-neutral-500">
-          Turn on the ISS layer to see the next pass over you.
-        </p>
-      )}
+
+            {passes && passes.length > 1 && (
+              <div className="mt-2 divide-y divide-neutral-800 border-t border-neutral-800">
+                {passes.slice(1, 3).map((p) => (
+                  <div
+                    key={p.start.getTime()}
+                    className="flex items-center justify-between py-1 text-[11px] text-neutral-400"
+                  >
+                    <span>
+                      {p.start.toLocaleString([], {
+                        weekday: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    <span className="tabular-nums text-neutral-500">
+                      max {Math.round(p.maxElevationDeg)}°
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="mt-2.5 text-[11px] text-neutral-500">
+            Turn on the ISS layer to see the next pass over you.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

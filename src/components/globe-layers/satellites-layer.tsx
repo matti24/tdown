@@ -414,13 +414,10 @@ export function SatellitesLayer({
           center
           style={{ pointerEvents: "none" }}
         >
-          <div
-            className="w-max max-w-[70vw] -translate-y-8 rounded-lg border bg-neutral-900/90 px-2.5 py-1.5 text-xs shadow-xl backdrop-blur"
-            style={{ borderColor: `${hovered.color}66` }}
-          >
+          <div className="panel w-max max-w-[70vw] -translate-y-8 px-2.5 py-1.5 text-xs">
             <div className="flex items-center gap-1.5 font-semibold text-white">
               <span
-                className="inline-block h-2 w-2 rounded-full"
+                className="inline-block h-2 w-2 rounded-[1px]"
                 style={{ backgroundColor: hovered.color }}
               />
               {hovered.name}

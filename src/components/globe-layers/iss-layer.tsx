@@ -116,10 +116,10 @@ export function IssLayer({ onSelect, selected }: IssLayerProps) {
         )}
         <pointLight color="#4da6ff" intensity={2} distance={0.6} />
         <Html center style={{ pointerEvents: "none" }}>
-          <div className="w-max -translate-y-7 rounded-full border border-sky-400/40 bg-neutral-900/90 px-2 py-0.5 text-xs font-medium text-sky-300 shadow-lg backdrop-blur">
-            🛰️ ISS
+          <div className="panel w-max -translate-y-7 px-2 py-0.5 text-xs font-medium text-neutral-100">
+            ISS
             {data && (
-              <span className="ml-1 text-sky-200/70">
+              <span className="ml-1 tabular-nums text-neutral-400">
                 {Math.round(data.velocity).toLocaleString("en-US")} km/h
               </span>
             )}

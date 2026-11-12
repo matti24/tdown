@@ -95,8 +95,8 @@ export function UserMarkerLayer({ lat, lng, flyNonce }: UserMarkerLayerProps) {
       </mesh>
       <pointLight color="#34d399" intensity={1.5} distance={0.5} />
       <Html center style={{ pointerEvents: "none" }}>
-        <div className="-translate-y-6 whitespace-nowrap rounded-full border border-emerald-400/50 bg-neutral-900/90 px-2 py-0.5 text-[11px] font-medium text-emerald-300 shadow-lg backdrop-blur">
-          📍 You
+        <div className="panel -translate-y-6 whitespace-nowrap px-2 py-0.5 text-[11px] font-medium text-neutral-100">
+          You
         </div>
       </Html>
     </group>

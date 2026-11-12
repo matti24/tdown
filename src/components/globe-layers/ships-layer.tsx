@@ -250,10 +250,10 @@ function ShipTooltip({ ship }: { ship: Ship }) {
   const compass = COMPASS[Math.round((ship.courseDeg % 360) / 45) % 8];
   const status = ship.speedKn < 0.5 ? "at anchor / in port" : `${speed} km/h`;
   return (
-    <div className="w-max max-w-[70vw] -translate-y-8 rounded-lg border border-cyan-400/40 bg-neutral-900/90 px-2.5 py-1.5 text-xs shadow-xl backdrop-blur">
+    <div className="panel w-max max-w-[70vw] -translate-y-8 px-2.5 py-1.5 text-xs">
       <div className="flex items-center gap-1.5 font-semibold text-white">
-        <span className="inline-block h-2 w-2 rounded-full bg-cyan-400" />
-        🚢 {ship.name || `MMSI ${ship.mmsi}`}
+        <span className="inline-block h-2 w-2 rounded-[1px] bg-cyan-400" />
+        {ship.name || `MMSI ${ship.mmsi}`}
       </div>
       <div className="mt-0.5 text-neutral-300">
         {category} · {status}

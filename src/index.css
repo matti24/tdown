@@ -31,6 +31,33 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Plain, solid floating panel used by every overlay box. */
+@layer components {
+  .panel {
+    background-color: rgb(20 20 20 / 0.94);
+    border: 1px solid #2f2f2f;
+    border-radius: 3px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
+  }
+  .panel-head {
+    background-color: #1b1b1b;
+    border-bottom: 1px solid #2a2a2a;
+  }
+  .panel-x {
+    display: flex;
+    height: 1.25rem;
+    width: 1.25rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    color: #8a8a8a;
+  }
+  .panel-x:hover {
+    background-color: #2a2a2a;
+    color: #fff;
+  }
+}
+
 /* Keep floating panels clear of the status bar / notch / home indicator when
    installed as a standalone PWA; env() insets are 0 in a normal browser. */
 @utility inset-safe-t {

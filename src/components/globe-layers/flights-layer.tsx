@@ -428,10 +428,10 @@ function FlightTooltip({ flight }: { flight: Flight }) {
   const trend =
     vr > 0.5 ? "↑ climbing" : vr < -0.5 ? "↓ descending" : "→ level";
   return (
-    <div className="w-max max-w-[70vw] -translate-y-9 rounded-lg border border-amber-400/40 bg-neutral-900/90 px-2.5 py-1.5 text-xs shadow-xl backdrop-blur">
+    <div className="panel w-max max-w-[70vw] -translate-y-9 px-2.5 py-1.5 text-xs">
       <div className="flex items-center gap-1.5 font-semibold text-white">
-        <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
-        ✈️ {flight.callsign}
+        <span className="inline-block h-2 w-2 rounded-[1px] bg-amber-400" />
+        {flight.callsign}
       </div>
       <div className="mt-0.5 text-neutral-300">
         {speedKmh.toLocaleString("en-US")} km/h ·{" "}

@@ -167,8 +167,10 @@ export default function MapView({
       const a = L.DomUtil.create("a", "", div) as HTMLAnchorElement;
       a.href = "#";
       a.title = "My location";
+      a.setAttribute("aria-label", "My location");
       a.setAttribute("role", "button");
-      a.innerHTML = "📍";
+      a.innerHTML =
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-3px"><circle cx="12" cy="12" r="6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>';
       L.DomEvent.on(a, "click", L.DomEvent.stop).on(a, "click", locateNow);
       return div;
     };
@@ -329,38 +331,38 @@ export default function MapView({
 
   const pills: {
     key: keyof LayerState;
-    icon: string;
+    label: string;
     text: string | null;
     on: boolean;
     cls: string;
   }[] = [
     {
       key: "flights",
-      icon: "✈️",
+      label: "Flights",
       text: layers.flights ? flights.length.toLocaleString("en-US") : null,
       on: layers.flights,
-      cls: "border-amber-400/40 bg-amber-400/20 text-amber-50",
+      cls: "bg-amber-400",
     },
     {
       key: "ships",
-      icon: "🚢",
+      label: "Ships",
       text: layers.ships ? ships.length.toLocaleString("en-US") : null,
       on: layers.ships,
-      cls: "border-cyan-400/40 bg-cyan-400/20 text-cyan-50",
+      cls: "bg-cyan-400",
     },
     {
       key: "satellites",
-      icon: "📡",
+      label: "Satellites",
       text: layers.satellites ? satellites.length.toLocaleString("en-US") : null,
       on: layers.satellites,
-      cls: "border-violet-400/40 bg-violet-400/20 text-violet-50",
+      cls: "bg-violet-400",
     },
     {
       key: "iss",
-      icon: "🛰️",
-      text: "ISS",
+      label: "ISS",
+      text: null,
       on: layers.iss,
-      cls: "border-sky-400/40 bg-sky-400/20 text-sky-50",
+      cls: "bg-sky-400",
     },
   ];
 
@@ -369,9 +371,10 @@ export default function MapView({
       <style>{`
         .tdm-ic{background:none;border:none;line-height:0}
         .tdm-ic>div{line-height:0}
-        .leaflet-bar a{background:rgba(23,23,23,.92);color:#e5e5e5;border-bottom-color:rgba(255,255,255,.12)}
-        .leaflet-bar a:hover{background:#262626;color:#fff}
-        .tdm-locate a{font-size:15px;line-height:30px;text-align:center}
+        .leaflet-bar,.leaflet-touch .leaflet-bar{border:1px solid #2f2f2f;border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,.5)}
+        .leaflet-bar a,.leaflet-bar a:first-child,.leaflet-bar a:last-child{background:rgba(20,20,20,.94);color:#e5e5e5;border-bottom-color:#2a2a2a;border-radius:0}
+        .leaflet-bar a:hover{background:#1f1f1f;color:#fff}
+        .tdm-locate a{line-height:30px;text-align:center}
         .leaflet-control-attribution{background:rgba(10,10,12,.72)!important;color:#8b8f98!important}
         .leaflet-control-attribution a{color:#9aa0aa!important}
       `}</style>
@@ -380,7 +383,7 @@ export default function MapView({
       <button
         type="button"
         onClick={onClose}
-        className="inset-safe-t inset-safe-l absolute z-[1100] flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-900/85 px-3.5 py-2 text-sm font-semibold text-white shadow-2xl backdrop-blur-md transition-colors hover:bg-neutral-800/90"
+        className="panel inset-safe-t inset-safe-l absolute z-[1100] flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-100 hover:border-neutral-500 hover:bg-[#1f1f1f]"
       >
         <span aria-hidden>&larr;</span>
         <span className="hidden sm:inline">Globe</span>
@@ -395,13 +398,16 @@ export default function MapView({
             type="button"
             onClick={() => onToggle(p.key)}
             aria-pressed={p.on}
-            className={`pointer-events-auto flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-lg backdrop-blur-md transition-colors ${
-              p.on
-                ? p.cls
-                : "border-white/10 bg-neutral-900/70 text-neutral-500 hover:bg-neutral-800/80"
+            className={`panel pointer-events-auto flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium hover:bg-[#1f1f1f] ${
+              p.on ? "text-neutral-100" : "text-neutral-500"
             }`}
           >
-            <span className={p.on ? "" : "opacity-50 grayscale"}>{p.icon}</span>
+            <span
+              className={`h-2 w-2 rounded-[1px] ${p.on ? p.cls : "bg-neutral-700"}`}
+            />
+            <span className={p.key === "iss" ? "" : "hidden sm:inline"}>
+              {p.label}
+            </span>
             {p.text && <span className="tabular-nums">{p.text}</span>}
           </button>
         ))}
